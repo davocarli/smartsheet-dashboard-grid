@@ -1,4 +1,4 @@
-# smartsheet-dashboard-grid
+# Smartsheet Dashboard Grid Helper
 A Chrome extension that overlays a grid over the Smartsheet Dashboard editor. This can help with spacing out your widgets consistently.
 
 ## Usage Instructions
