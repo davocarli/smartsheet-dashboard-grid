@@ -1,5 +1,7 @@
 gridLayouts = {
     "12Columns":    [
+        // Height of -1 will extend all the way down infinitely starting from y coordinate.
+        // Width of -1 will extend all the way to the right infinitely starting from x coordinate.
         {'color': 'Red', 'opacity': '20%', 'height': -1, 'width': 6, 'x': 3, 'y':0},
         {'color': 'Red', 'opacity': '20%', 'height': -1, 'width': 6, 'x': 10, 'y': 0},
         {'color': 'Red', 'opacity': '20%', 'height': -1, 'width': 6, 'x': 17, 'y': 0},
@@ -18,15 +20,9 @@ gridLayouts = {
     ]
 }
 
-chrome.storage.local.get('imgUrl', function (imgUrl) {
-    toggleHighlight(imgUrl.imgUrl);
-    chrome.storage.local.remove('imgUrl');
-});
+function toggleHighlight() {
 
-function toggleHighlight(imgUrl) {
-
-    // var gridElement = document.getElementById('grid-highlight');
-    existing = document.querySelectorAll("[data-grid-overlay]");
+    existing = document.querySelectorAll("[data-grid-overlay='parent']");
     if (existing.length > 0) {
         for (i = existing.length - 1; i >= 0; i--) {
             existing[i].remove();
@@ -34,7 +30,6 @@ function toggleHighlight(imgUrl) {
     } else {
         chosenLayout = gridLayouts['12Columns'];
         parent = document.querySelectorAll("[data-client-id='dab-dui-2']")[0];
-        // gridWidth = parent.offsetWidth / chosenLayout.length;
         gridDimensions = parent.style.backgroundSize.replaceAll('px', '').split(' ');
         x = parseInt(gridDimensions[0]);
         y = parseInt(gridDimensions[1]);
@@ -57,28 +52,12 @@ function toggleHighlight(imgUrl) {
             } else {
                 width = (x * column['width']) + 'px';
             }
-            // if (column['filled']) {
             gridHighlightElement = "<div data-grid-overlay=\"" + i + "\" style=\"height: " + height + "; width: " + width + ";  background-color: " + column['color'] + "; opacity: " + column['opacity'] + "; position: absolute; left: " + left + "; top: " + top + "; overflow: hidden;\"></div>"
-                // gridHighlightElement = "<div data-grid-overlay=\"" + column['columnNumber'] + "\" style=\"width: " + gridWidth + "%; background-color: " + column['color'] + "; opacity: " + column['opacity'] + "; margin-left: " + (gridWidth * column['columnNumber']) + "%; pointer-events: none; z-index: 5000;\" class=\"dashboard-helper-grid dashboard-helper-grid--active\"></div>"
             newHTML += gridHighlightElement;
-                // parent.innerHTML += gridHighlightElement;
-                // parent.insertAdjacentHTML('afterend', gridHighlightElement);
-            // }
-            // if (chosenLayout[i] == 1) {
-            //     gridHighlightElement = "<div data-grid-overlay=\"" + i + "\" style=\"width: " + gridWidth + "%; background-color: Red; opacity: 10%; margin-left: " + (gridWidth * i) + "%; pointer-events: none; z-index: 5000;\" class=\"dashboard-helper-grid dashboard-helper-grid--active\"></div>"
-            //     parent.insertAdjacentHTML('afterend', gridHighlightElement);
-            // } else {
-            //     console.log('no grid');
-            // }
         }
 
         parent.innerHTML = newHTML + "</div>";
-        
-        // gridHighlightElement = "<div id=\"grid-highlight\" class=\"dashboard-helper-grid dashboard-helper-grid--active\" style=\"background-size: 100%; background-image:url('" + imgUrl + "'); opacity: 30%; pointer-events: none; z-index: 5000;\"></div>"
-
-        // parent = document.querySelectorAll("[data-client-id='dab-dui-2']")[0];
-        
-        // parent.insertAdjacentHTML('afterend', gridHighlightElement);
-        
     }
 }
+
+toggleHighlight();
