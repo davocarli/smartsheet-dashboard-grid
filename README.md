@@ -1,6 +1,8 @@
 # Smartsheet Dashboard Grid Helper
 A Chrome extension that overlays a grid over the Smartsheet Dashboard editor. This can help with spacing out your widgets consistently.
 
+![Example Screenshot](/screenshots/screenshot.png "Example Screenshot")
+
 ## Usage Instructions
 Navigate to a dashboard inside of Smartsheet, then click the Pencil icon in the top right to enter the editing view for the dashboard. Once in the editing view, click the extension icon to add the grid to the background of the dashboard.
 
