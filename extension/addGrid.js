@@ -38,8 +38,8 @@ function toggleHighlight() {
 
         for (i = 0; i < chosenLayout.length; i++) {
             column = chosenLayout[i];
-            left = (x * column['x']) + 'px';
-            top = (y * column['y']) + 'px';
+            leftPosition = (x * column['x']) + 'px';
+            topPosition = (y * column['y']) + 'px';
             height = null;
             width = null;
             if (column['height'] == -1) {
@@ -52,7 +52,7 @@ function toggleHighlight() {
             } else {
                 width = (x * column['width']) + 'px';
             }
-            gridHighlightElement = "<div data-grid-overlay=\"" + i + "\" style=\"height: " + height + "; width: " + width + ";  background-color: " + column['color'] + "; opacity: " + column['opacity'] + "; position: absolute; left: " + left + "; top: " + top + "; overflow: hidden;\"></div>"
+            gridHighlightElement = "<div data-grid-overlay=\"" + i + "\" style=\"height: " + height + "; width: " + width + ";  background-color: " + column['color'] + "; opacity: " + column['opacity'] + "; position: absolute; left: " + leftPosition + "; top: " + topPosition + "; overflow: hidden;\"></div>"
             newHTML += gridHighlightElement;
         }
 
