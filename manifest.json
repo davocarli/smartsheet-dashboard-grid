@@ -1,0 +1,28 @@
+{
+    "name": "Smartsheet Dashboard Grid",
+    "description": "When activated, this extension will add a 12-column grid to your Smartsheet Dashboard editor.",
+    "version": "1.0",
+    "manifest_version": 3,
+    "icons": {
+        "16": "images/dashboardIcon.png",
+        "48": "images/dashboardIcon.png",
+        "128": "images/dashboardIcon.png"
+    },
+    "action": {
+        "default_title": "Click to add grid",
+        "default_icon": "images/dashboardIcon.png"
+    },
+    "permissions": ["activeTab", "scripting", "storage"],
+    "background": {
+        "service_worker": "background.js"
+    },
+    "host_permissions": [
+        "https://app.smartsheet.com/dashboards/*"
+    ],
+    "web_accessible_resources": [
+        {
+            "resources": ["images/dashboardGrid.png"],
+            "matches": [ "https://app.smartsheet.com/*" ]
+        }
+    ]
+}
