@@ -1,5 +1,5 @@
-# Smartsheet Dashboard Grid Overlay
-A Chrome extension that overlays a grid over the Smartsheet Dashboard editor. This can help with spacing out your widgets consistently.
+# Smartsheet Dashboard Overlay
+This Chrome extension allows you to add custom shapes to Smartsheet's dashboard editing grid. This can help you to be more consistent with your widget placement.
 
 ![Example Screenshot](/screenshots/screenshot.png "Example Screenshot")
 

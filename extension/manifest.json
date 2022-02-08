@@ -1,6 +1,6 @@
 {
-    "name": "Smartsheet Dashboard Grid",
-    "description": "When activated, this extension will add a 12-column grid to your Smartsheet Dashboard editor.",
+    "name": "Smartsheet Dashboard Overlay",
+    "description": "This extension allows you to add custom shapes to Smartsheet's dashboard editing grid. This can help you to be more consistent with your widget placement.",
     "version": "1.0.0",
     "manifest_version": 3,
     "icons": {
