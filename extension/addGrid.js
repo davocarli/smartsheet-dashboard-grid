@@ -2,24 +2,22 @@ defaultGrids = {
     "12Columns":    [
         // Height of -1 will extend all the way down infinitely starting from y coordinate.
         // Width of -1 will extend all the way to the right infinitely starting from x coordinate.
-        {color: 'Red', opacity: '20%', height: -1, width: 6, x: 3, y:0},
-        {color: 'Red', opacity: '20%', height: -1, width: 6, x: 10, y: 0},
-        {color: 'Red', opacity: '20%', height: -1, width: 6, x: 17, y: 0},
-        {color: 'Red', opacity: '20%', height: -1, width: 6, x: 24, y: 0},
-        {color: 'Red', opacity: '20%', height: -1, width: 6, x: 31, y: 0},
-        {color: 'Red', opacity: '20%', height: -1, width: 6, x: 38, y: 0},
-
-        {color: 'Blue', opacity: '20%', height: -1, width: 1, x: 44, y: 0},
+        {"color": "Red", "opacity": "20%", "height": -1, "width": 6, "x": 2, "y":0},
+        {"color": "Red", "opacity": "20%", "height": -1, "width": 6, "x": 9, "y": 0},
+        {"color": "Red", "opacity": "20%", "height": -1, "width": 6, "x": 16, "y": 0},
+        {"color": "Red", "opacity": "20%", "height": -1, "width": 6, "x": 23, "y": 0},
+        {"color": "Red", "opacity": "20%", "height": -1, "width": 6, "x": 30, "y": 0},
+        {"color": "Red", "opacity": "20%", "height": -1, "width": 6, "x": 37, "y": 0},
         
-        {color: 'Red', opacity: '20%', height: -1, width: 6, x: 45, y: 0},
-        {color: 'Red', opacity: '20%', height: -1, width: 6, x: 52, y: 0},
-        {color: 'Red', opacity: '20%', height: -1, width: 6, x: 59, y: 0},
-        {color: 'Red', opacity: '20%', height: -1, width: 6, x: 66, y: 0},
-        {color: 'Red', opacity: '20%', height: -1, width: 6, x: 73, y: 0},
-        {color: 'Red', opacity: '20%', height: -1, width: 6, x: 80, y: 0},
+        {"color": "Red", "opacity": "20%", "height": -1, "width": 6, "x": 46, "y": 0},
+        {"color": "Red", "opacity": "20%", "height": -1, "width": 6, "x": 53, "y": 0},
+        {"color": "Red", "opacity": "20%", "height": -1, "width": 6, "x": 60, "y": 0},
+        {"color": "Red", "opacity": "20%", "height": -1, "width": 6, "x": 67, "y": 0},
+        {"color": "Red", "opacity": "20%", "height": -1, "width": 6, "x": 74, "y": 0},
+        {"color": "Red", "opacity": "20%", "height": -1, "width": 6, "x": 81, "y": 0},
         ],
     "markCenter": [
-        {color: 'Green', opacity: '50%', height: -1, width: 1, x: 44, y: 0},
+        {"color": "Green", "opacity": "50%", "height": -1, "width": 1, "x": 44, "y": 0},
     ]
 }
 

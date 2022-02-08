@@ -1,4 +1,5 @@
 customGrids = null;
+gridStyle = null;
 
 function saveOptions() {
     var selection = document.querySelector('input[name="gridStyle"]:checked').value;
@@ -20,7 +21,8 @@ function restoreOptions() {
             newRadio = '<input type="radio" id="' + key + '" name="gridStyle" value="' + key + '"> <label for="' + key + '">' + key + '</label> <button data-updateid="' + key + '">Edit</button><button data-removeid="' + key + '">Remove</button><br>';
             header.insertAdjacentHTML('afterend', newRadio);
         };
-        document.getElementById(items.gridStyle).checked = true;
+        gridStyle = items.gridStyle;
+        document.getElementById(gridStyle).checked = true;
         removeButtons = document.querySelectorAll('[data-removeid]');
         removeButtons.forEach((button) => {
             button.addEventListener('click', (item) => {
@@ -65,6 +67,10 @@ function confirmSaved() {
 function removeCustom(button) {
     gridName = button.dataset.removeid;
     delete customGrids[gridName];
+    if (gridName == gridStyle) {
+        document.getElementById('12Columns').click();
+        saveOptions();
+    }
     saveCustomGrids();
 }
 
