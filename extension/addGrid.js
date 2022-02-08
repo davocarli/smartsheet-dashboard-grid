@@ -17,7 +17,7 @@ gridLayouts = {
         {'color': 'Red', 'opacity': '20%', 'height': -1, 'width': 6, 'x': 66, 'y': 0},
         {'color': 'Red', 'opacity': '20%', 'height': -1, 'width': 6, 'x': 73, 'y': 0},
         {'color': 'Red', 'opacity': '20%', 'height': -1, 'width': 6, 'x': 80, 'y': 0},
-    ]
+        ]
 }
 
 function toggleHighlight() {

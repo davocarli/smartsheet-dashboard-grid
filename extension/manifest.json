@@ -12,17 +12,12 @@
         "default_title": "Click to add grid",
         "default_icon": "images/dashboardIcon.png"
     },
-    "permissions": ["activeTab", "scripting", "storage"],
+    "options_page": "pages/options.html",
+    "permissions": ["activeTab", "scripting", "storage", "contextMenus"],
     "background": {
         "service_worker": "background.js"
     },
     "host_permissions": [
         "https://app.smartsheet.com/dashboards/*"
-    ],
-    "web_accessible_resources": [
-        {
-            "resources": ["images/dashboardGrid.png"],
-            "matches": [ "https://app.smartsheet.com/*" ]
-        }
     ]
 }
