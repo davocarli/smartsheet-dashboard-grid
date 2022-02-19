@@ -5,13 +5,22 @@
     </head>
 
     <body>
+        <h3>Smartsheet Grid Helper Settings</h3>
+        <p>On this page you can add new grid styles to be available when using the Grid Helper.
+        <br>Additionally, the grid style selected/saved on this page will be available as a "compatibility mode" style.
+        <br>The style selected can be added to the dashboard by clicking the extension icon in your toolbar and may 
+        <br>continue to work if Smartsheet is updated in such a way that the in-app right rail icon disappears.
+        </p>
         <h3>Select Grid Style</h3>
         <h4>Built-in</h4>
-        <input type="radio" id="12Columns" name="gridStyle" value="12Columns">
-        <label for="12Columns">12 Columns</label><br>
+        <input type="checkbox" id="Center Line" name="gridStyle" value="Center Line">
+        <label for="Center Line">Center Line</label><br>
 
-        <input type="radio" id="markCenter" name="gridStyle" value="markCenter">
-        <label for="Mark Center">Mark Center</label><br>
+        <input type="checkbox" id="11 Columns" name="gridStyle" value="11 Columns">
+        <label for="11 Columns">11 Columns</label><br>
+
+        <input type="checkbox" id="4 Columns" name="gridStyle" value="4 Columns">
+        <label for="4 Columns">4 Columns (Quarters)</label><br>
 
         <h4 id="custom-heading">Custom</h4>
 

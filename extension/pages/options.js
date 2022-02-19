@@ -2,27 +2,39 @@ customGrids = null;
 gridStyle = null;
 
 function saveOptions() {
-    var selection = document.querySelector('input[name="gridStyle"]:checked').value;
-    // console.log(selection);
+    var selections = document.querySelectorAll('input[name="gridStyle"]:checked');
+    console.log(selections);
+    checked = [];
+    for (i = 0; i < selections.length; i++) {
+        checked.push(selections[i].value);
+    }
+    console.log(checked);
     chrome.storage.sync.set({
-        gridStyle: selection
+        gridStyles: checked
     }, confirmSaved);
 }
 
 function restoreOptions() {
     // Use default value "12Columns"
     chrome.storage.sync.get({
-        gridStyle: '12Columns',
+        gridStyles: ['11 Columns'],
         customGrids: {},
+        enabled: [],
     }, function(items) {
         customGrids = items.customGrids;
         header = document.getElementById("custom-heading");
         for (const [key, value] of Object.entries(customGrids)) {
-            newRadio = '<input type="radio" id="' + key + '" name="gridStyle" value="' + key + '"> <label for="' + key + '">' + key + '</label> <button data-updateid="' + key + '">Edit</button><button data-removeid="' + key + '">Remove</button><br>';
-            header.insertAdjacentHTML('afterend', newRadio);
+            newCheck = '<input type="checkbox" id="' + key + '" name="gridStyle" value="' + key + '"> <label for="' + key + '">' + key + '</label> <button data-updateid="' + key + '">Edit</button><button data-removeid="' + key + '">Remove</button><br>';
+            header.insertAdjacentHTML('afterend', newCheck);
         };
-        gridStyle = items.gridStyle;
-        document.getElementById(gridStyle).checked = true;
+        gridStyles = items.gridStyles;
+        for (i = 0; i < gridStyles.length; i++) {
+            gridStyle = gridStyles[i];
+            item = document.getElementById(gridStyle);
+            if (item != null) {
+                item.checked = true;
+            }
+        }
         removeButtons = document.querySelectorAll('[data-removeid]');
         removeButtons.forEach((button) => {
             button.addEventListener('click', (item) => {
@@ -44,6 +56,13 @@ function revealForm() {
 
 function addNewGrid() {
     gridName = document.getElementById('custom-grid-name').value;
+    if (gridName == "11 Columns" || gridName == "Center Line" || gridName == "4 Columns") {
+        alert('You cannot use the name of a default option.');
+        return;
+    } else if (gridName == "parent") {
+        alert('The style can\'t be named "parent".');
+        return;
+    }
     gridLayout = document.getElementById('custom-grid-layout').value;
     if (gridLayout.endsWith(',')) {
         gridLayout = gridLayout.substring(0, gridLayout.length - 1);
@@ -67,10 +86,6 @@ function confirmSaved() {
 function removeCustom(button) {
     gridName = button.dataset.removeid;
     delete customGrids[gridName];
-    if (gridName == gridStyle) {
-        document.getElementById('12Columns').click();
-        saveOptions();
-    }
     saveCustomGrids();
 }
 
