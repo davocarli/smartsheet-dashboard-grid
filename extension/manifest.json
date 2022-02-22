@@ -1,12 +1,12 @@
 {
     "name": "Smartsheet Dashboard Overlay",
-    "description": "This extension allows you to add custom shapes to Smartsheet's dashboard editing grid. This can help you to be more consistent with your widget placement.",
+    "description": "Adds the ability to overlay shapes & guide-lines on Smartsheet's dashboard editor to assist with more consistent widget placement.",
     "version": "1.0.0",
     "manifest_version": 3,
     "icons": {
-        "16": "images/tictactoe.png",
-        "48": "images/tictactoe.png",
-        "128": "images/tictactoe.png"
+        "16": "images/tictactoe-16.png",
+        "48": "images/tictactoe-48.png",
+        "128": "images/tictactoe-128.png"
     },
     "action": {
         "default_title": "Click to add grid",

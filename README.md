@@ -1,7 +1,7 @@
 # Smartsheet Dashboard Overlay
 This Chrome extension allows you to add custom shapes to Smartsheet's dashboard editing grid. This can help you to be more consistent with your widget placement.
 
-![Example Screenshot](/screenshots/screenshot.png "Example Screenshot")
+![Example Screenshot](/screenshots/Screen1.jpg "Example Screenshot")
 
 ## Usage Instructions
 Navigate to a dashboard inside of Smartsheet, then click the extension icon in the top right. The grid will be visible in the background of the dashboard whenever you are in the editing view (accessible with the "Pencil icon" in the top right) of the dashboard.
