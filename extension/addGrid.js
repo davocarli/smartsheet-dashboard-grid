@@ -1,220 +1,236 @@
 defaultGrids = {
-    // Height of -1 will extend all the way down infinitely starting from y coordinate.
-    // Width of -1 will extend all the way to the right infinitely starting from x coordinate.
-    "Center Line": [
-        // Center Column
-        {"color": "Blue", "opacity": "30%", "height": -1, "width": 1, "x": 44, "y": 0},
-    ],
-    "11 Columns": [   
-        // Left Side
-        {"color":"Red","height":-1,"opacity":"20%","width":6,"x":2,"y":0},
-        {"color":"Red","height":-1,"opacity":"20%","width":6,"x":10,"y":0},
-        {"color":"Red","height":-1,"opacity":"20%","width":6,"x":18,"y":0},
-        {"color":"Red","height":-1,"opacity":"20%","width":6,"x":26,"y":0},
-        {"color":"Red","height":-1,"opacity":"20%","width":6,"x":34,"y":0},
+	// Height of -1 will extend all the way down infinitely starting from y coordinate.
+	// Width of -1 will extend all the way to the right infinitely starting from x coordinate.
+	"Center Line": [
+		// Center Column
+		{ color: "Blue", opacity: "30%", height: -1, width: 1, x: 44, y: 0 },
+	],
+	"11 Columns": [
+		// Left Side
+		{ color: "Red", height: -1, opacity: "20%", width: 6, x: 2, y: 0 },
+		{ color: "Red", height: -1, opacity: "20%", width: 6, x: 10, y: 0 },
+		{ color: "Red", height: -1, opacity: "20%", width: 6, x: 18, y: 0 },
+		{ color: "Red", height: -1, opacity: "20%", width: 6, x: 26, y: 0 },
+		{ color: "Red", height: -1, opacity: "20%", width: 6, x: 34, y: 0 },
 
-        // Center
-        {"color":"Red","height":-1,"opacity":"20%","width":5,"x":42,"y":0},
+		// Center
+		{ color: "Red", height: -1, opacity: "20%", width: 5, x: 42, y: 0 },
 
-        // Right Side
-        {"color":"Red","height":-1,"opacity":"20%","width":6,"x":49,"y":0},
-        {"color":"Red","height":-1,"opacity":"20%","width":6,"x":57,"y":0},
-        {"color":"Red","height":-1,"opacity":"20%","width":6,"x":65,"y":0},
-        {"color":"Red","height":-1,"opacity":"20%","width":6,"x":73,"y":0},
-        {"color":"Red","height":-1,"opacity":"20%","width":6,"x":81,"y":0}
-        ],
-    "4 Columns": [
-        // 4 Quarters
-        {"color":"Gray","height": -1,"opacity":"20%","width":21,"x":1,"y":0},
-        {"color":"Gray","height": -1,"opacity":"20%","width":21,"x":23,"y":0},
-        {"color":"Gray","height": -1,"opacity":"20%","width":21,"x":45,"y":0},
-        {"color":"Gray","height": -1,"opacity":"20%","width":21,"x":67,"y":0},
-    ],
+		// Right Side
+		{ color: "Red", height: -1, opacity: "20%", width: 6, x: 49, y: 0 },
+		{ color: "Red", height: -1, opacity: "20%", width: 6, x: 57, y: 0 },
+		{ color: "Red", height: -1, opacity: "20%", width: 6, x: 65, y: 0 },
+		{ color: "Red", height: -1, opacity: "20%", width: 6, x: 73, y: 0 },
+		{ color: "Red", height: -1, opacity: "20%", width: 6, x: 81, y: 0 },
+	],
+	"4 Columns": [
+		// 4 Quarters
+		{ color: "Gray", height: -1, opacity: "20%", width: 21, x: 1, y: 0 },
+		{ color: "Gray", height: -1, opacity: "20%", width: 21, x: 23, y: 0 },
+		{ color: "Gray", height: -1, opacity: "20%", width: 21, x: 45, y: 0 },
+		{ color: "Gray", height: -1, opacity: "20%", width: 21, x: 67, y: 0 },
+	],
 }
-customGrids = null;
-selectedStyles = null;
-chrome.storage.sync.get({
-    gridStyles: [],
-    customGrids: {},
-}, function(items) {
-    customGrids = items.customGrids;
-    selectedStyles = items.gridStyles;
-})
+customGrids = null
+selectedStyles = null
+chrome.storage.sync.get(
+	{
+		gridStyles: [],
+		customGrids: {},
+	},
+	function (items) {
+		customGrids = items.customGrids
+		selectedStyles = items.gridStyles
+	}
+)
 
 function removeHighlights(group) {
-    existing = document.querySelectorAll("[data-grid-overlay='" + group + "']");
-    if (existing.length > 0) {
-        for (let i = existing.length - 1; i >= 0; i--) {
-            existing[i].remove();
-        }
-    }
+	existing = document.querySelectorAll("[data-grid-overlay='" + group + "']")
+	if (existing.length > 0) {
+		for (let i = existing.length - 1; i >= 0; i--) {
+			existing[i].remove()
+		}
+	}
 }
 
 function gridIsEnabled() {
-    return document.querySelectorAll("[data-grid-overlay='parent']").length > 0;
+	return document.querySelectorAll("[data-grid-overlay='parent']").length > 0
 }
 
 function getCurrentDimensions() {
-    parent = document.querySelectorAll("[data-client-id='dab-dui-2']")[0];
-    gridDimensions = parent.style.backgroundSize.replaceAll('px', '').split(' ');
-    x = parseInt(gridDimensions[0]);
-    y = parseInt(gridDimensions[1]);
-    return [x, y];
+	parent = document.querySelectorAll("[data-client-id='dab-dui-2']")[0]
+	gridDimensions = parent.style.backgroundSize.replaceAll("px", "").split(" ")
+	x = parseInt(gridDimensions[0])
+	y = parseInt(gridDimensions[1])
+	return [x, y]
 }
 
 function buildRectangle(x, y, name, rectangle) {
-    leftPosition = (x * rectangle.x) + 'px';
-    topPosition = (y * rectangle.y) + 'px';
-    height = null;
-    width = null;
-    if (rectangle.height == -1) {
-        height = '100%';
-    } else {
-        height = (y * rectangle.height) + 'px';
-    }
-    if (rectangle.width == -1) {
-        width = '100%';
-    } else {
-        width = (x * rectangle.width) + 'px';
-    }
-    gridHighlightElement = "<div data-grid-overlay=\"" + name + "\" style=\"height: " + height + "; width: " + width + ";  background-color: " + rectangle.color + "; opacity: " + rectangle.opacity + "; position: absolute; left: " + leftPosition + "; top: " + topPosition + "; overflow: hidden;\"></div>"
-    return gridHighlightElement;
+	leftPosition = x * rectangle.x + "px"
+	topPosition = y * rectangle.y + "px"
+	height = null
+	width = null
+	if (rectangle.height == -1) {
+		height = "100%"
+	} else {
+		height = y * rectangle.height + "px"
+	}
+	if (rectangle.width == -1) {
+		width = "100%"
+	} else {
+		width = x * rectangle.width + "px"
+	}
+	gridHighlightElement =
+		'<div data-grid-overlay="' +
+		name +
+		'" style="height: ' +
+		height +
+		"; width: " +
+		width +
+		";  background-color: " +
+		rectangle.color +
+		"; opacity: " +
+		rectangle.opacity +
+		"; position: absolute; left: " +
+		leftPosition +
+		"; top: " +
+		topPosition +
+		'; overflow: hidden;"></div>'
+	return gridHighlightElement
 }
 
 function createParent() {
-    document.querySelectorAll("[data-client-id='dab-dui-2']")[0].innerHTML = '<div style="position: relative; overflow: hidden; height: 100%; width: 100;" data-grid-overlay="parent"></div>'
+	document.querySelectorAll("[data-client-id='dab-dui-2']")[0].innerHTML =
+		'<div style="position: relative; overflow: hidden; height: 100%; width: 100;" data-grid-overlay="parent"></div>'
 }
 
 function addHighlights(name, specs) {
-    if (!gridIsEnabled()) return;
+	if (!gridIsEnabled()) return
 
-    gridParent = document.querySelector("[data-grid-overlay='parent']");
-    // parent = parent[0];
-    [x, y] = getCurrentDimensions();
-    newHTML = ''
-    for (let j = 0; j < specs.length; j++) {
-        newHTML += buildRectangle(x, y, name, specs[j]);
-    }
-    gridParent.innerHTML += newHTML;
+	gridParent = document.querySelector("[data-grid-overlay='parent']")
+	// parent = parent[0];
+	;[x, y] = getCurrentDimensions()
+	newHTML = ""
+	for (let j = 0; j < specs.length; j++) {
+		newHTML += buildRectangle(x, y, name, specs[j])
+	}
+	gridParent.innerHTML += newHTML
 }
 
 function gridButtonClicked(e) {
-    path = e.path;
-    for (let i = 0; i < path.length; i++) {
-        elem = path[i];
-        if (elem.tagName == "BUTTON") {
-            // Is one of the Right Rail Buttons
-            if (elem.dataset.clientId == "grid-helper-button") {
-                return true;
-            }
-            return false;
-        }
-    }
-    return null;
+	return e.target.getAttribute("data-grid-helper-id") == "grid-helper-button"
 }
 
 function closeSmartsheetPanel() {
-    activeButton = document.getElementsByClassName('dashboard-right-rail__button-hover-wrapper--active')[0].firstChild;
-    activeButton.click();
+	activeButton = document.getElementsByClassName(
+		"dashboard-right-rail__button-hover-wrapper--active"
+	)[0].firstChild
+	activeButton.click()
 }
 
 function openSettings() {
-    chrome.runtime.sendMessage({"action": "openOptionsPage"});
+	chrome.runtime.sendMessage({ action: "openOptionsPage" })
 }
 
 function removeSelectedStyle(style) {
-    currentIndex = selectedStyles.indexOf(style);
-    if (currentIndex !== -1) {
-        selectedStyles.splice(currentIndex, 1);
-    }
+	currentIndex = selectedStyles.indexOf(style)
+	if (currentIndex !== -1) {
+		selectedStyles.splice(currentIndex, 1)
+	}
 }
 
 function handleToggle(enabled, clientId) {
-    if (clientId == "Enable Grid Helper") {
-        if (enabled) {
-            createParent();
-            for (let i = 0; i < selectedStyles.length; i++) {
-                style = selectedStyles[i];
-                if (style in defaultGrids) {
-                    addHighlights(style, defaultGrids[style]);
-                } else if (style in customGrids) {
-                    addHighlights(style, customGrids[style]);
-                } else {
-                    removeSelectedStyle(style);
-                    chrome.storage.sync.set({gridStyles: selectedStyles});
-                }
-            }
-        } else {
-            removeHighlights('parent');
-        }
-    } else {
-        if (enabled) {
-            // Show rectangles
-            if (clientId in defaultGrids) {
-                addHighlights(clientId, defaultGrids[clientId]);
-            } else if (clientId in customGrids) {
-                addHighlights(clientId, customGrids[clientId]);
-            } 
-            // Add to selectedStyles
-            if (!selectedStyles.includes(clientId)) selectedStyles.push(clientId);
-        } else {
-            // Remove rectangles
-            removeHighlights(clientId);
-            // Remove from selectedStyles
-            removeSelectedStyle(clientId);
-        }
-        // Save selectedStyles
-        chrome.storage.sync.set({gridStyles: selectedStyles});
-    }
+	if (clientId == "Enable Grid Helper") {
+		if (enabled) {
+			createParent()
+			for (let i = 0; i < selectedStyles.length; i++) {
+				style = selectedStyles[i]
+				if (style in defaultGrids) {
+					addHighlights(style, defaultGrids[style])
+				} else if (style in customGrids) {
+					addHighlights(style, customGrids[style])
+				} else {
+					removeSelectedStyle(style)
+					chrome.storage.sync.set({ gridStyles: selectedStyles })
+				}
+			}
+		} else {
+			removeHighlights("parent")
+		}
+	} else {
+		if (enabled) {
+			// Show rectangles
+			if (clientId in defaultGrids) {
+				addHighlights(clientId, defaultGrids[clientId])
+			} else if (clientId in customGrids) {
+				addHighlights(clientId, customGrids[clientId])
+			}
+			// Add to selectedStyles
+			if (!selectedStyles.includes(clientId))
+				selectedStyles.push(clientId)
+		} else {
+			// Remove rectangles
+			removeHighlights(clientId)
+			// Remove from selectedStyles
+			removeSelectedStyle(clientId)
+		}
+		// Save selectedStyles
+		chrome.storage.sync.set({ gridStyles: selectedStyles })
+	}
+}
+
+function findParentElementofType(element, type) {
+	while (element.nodeName != type) {
+		element = element.parentElement
+		if (element == null) return null
+	}
+	return element
 }
 
 function switchToggle(e) {
-    label = null;
-    // Locate the label tag
-    for (i = 0; i < e.path.length; i++) {
-        element = e.path[i];
-        if (element.nodeName == "LABEL") {
-            label = element;
-            break;
-        }
-    }
-    checkbox = label.getElementsByTagName('div')[1];
-    
-    if (checkbox.classList.contains('css-17sgdyk')) {
-        // Is currently checked (and being unchecked)
-        checkbox.classList.remove('css-17sgdyk');
-        checkbox.classList.add('css-1dfg2qw');
-        clientId = label.dataset.clientId.slice(12);
-        handleToggle(false, clientId);
-    } else if (checkbox.classList.contains('css-1dfg2qw')) {
-        // Is currently unchecked (and being checked)
-        checkbox.classList.remove('css-1dfg2qw');
-        checkbox.classList.add('css-17sgdyk');
-        clientId = label.dataset.clientId.slice(12);
-        handleToggle(true, clientId);
-    }
+	label = findParentElementofType(e.target, "LABEL")
+
+	checkbox = label.getElementsByTagName("div")[1]
+
+	if (checkbox.classList.contains("css-17sgdyk")) {
+		// Is currently checked (and being unchecked)
+		checkbox.classList.remove("css-17sgdyk")
+		checkbox.classList.add("css-1dfg2qw")
+		clientId = label.dataset.clientId.slice(12)
+		handleToggle(false, clientId)
+	} else if (checkbox.classList.contains("css-1dfg2qw")) {
+		// Is currently unchecked (and being checked)
+		checkbox.classList.remove("css-1dfg2qw")
+		checkbox.classList.add("css-17sgdyk")
+		clientId = label.dataset.clientId.slice(12)
+		handleToggle(true, clientId)
+	}
 }
 
 function setPanelListeners() {
-    // Close Button
-    document.querySelectorAll("[data-client-id='grid-helper-close']")[0]
-        .addEventListener('click', closeRightPanel);
-    
-    // Settings (More) Button
-    document.querySelectorAll("[data-client-id='grid-helper-settings']")[0]
-        .addEventListener('click', openSettings);
+	// Close Button
+	document
+		.querySelectorAll("[data-client-id='grid-helper-close']")[0]
+		.addEventListener("click", closeRightPanel)
 
-    document.querySelectorAll("[data-client-id^='grid-toggle']").forEach((toggle) =>{
-        toggle.addEventListener('click', switchToggle);
-    });
+	// Settings (More) Button
+	document
+		.querySelectorAll("[data-client-id='grid-helper-settings']")[0]
+		.addEventListener("click", openSettings)
+
+	document
+		.querySelectorAll("[data-client-id^='grid-toggle']")
+		.forEach((toggle) => {
+			toggle.addEventListener("click", switchToggle)
+		})
 }
 
 function createToggle(name, checked) {
-    className = 'css-1dfg2qw'; // Unchecked
-    if (checked) {
-        className = 'css-17sgdyk'; // Checked
-    }
-    return `
+	className = "css-1dfg2qw" // Unchecked
+	if (checked) {
+		className = "css-17sgdyk" // Checked
+	}
+	return `
     <div class="widget-title-accordion__title-form-group form-group">
         <label data-client-id="grid-toggle-${name}" class="widget-title-accordion__show-title-toggle css-10lfpea">
             <div class="css-vrslyn">
@@ -241,39 +257,39 @@ function createToggle(name, checked) {
             </div>
         </label>
     </div>
-    `.trim();
+    `.trim()
 }
 
 function openRightPanel() {
+	// Condense Canvas
+	element = document.querySelectorAll("[data-client-id='dab-dui-12']")[0]
+	element.classList.add("dashboard-canvas__viewport--condensed")
 
-     // Condense Canvas
-    element = document.querySelectorAll("[data-client-id='dab-dui-12']")[0];
-    element.classList.add('dashboard-canvas__viewport--condensed');
+	// Dashboard Right Panel
+	element = document.getElementsByClassName("dashboard-right-nav")[0]
+		.firstChild
+	element.classList.add("dashboard-right-panel__width-wrapper--open")
+	element.style.minWidth = "360px"
+	element.style.width = "360px"
 
-    // Dashboard Right Panel
-    element = document.getElementsByClassName('dashboard-right-nav')[0].firstChild;
-    element.classList.add('dashboard-right-panel__width-wrapper--open');
-    element.style.minWidth = '360px';
-    element.style.width = '360px';
+	// dab-drn-4
+	element = document.querySelectorAll("[data-client-id='dab-drn-4']")[0]
+	element.classList.add("dashboard-right-panel--open")
 
-    // dab-drn-4
-    element = document.querySelectorAll("[data-client-id='dab-drn-4']")[0];
-    element.classList.add('dashboard-right-panel--open');
+	node = document.createElement("div")
 
-    node = document.createElement('div');
+	enableToggle = createToggle("Enable Grid Helper", gridIsEnabled())
 
-    enableToggle = createToggle("Enable Grid Helper", gridIsEnabled());
+	builtInToggles = ""
+	for (key in defaultGrids) {
+		builtInToggles += createToggle(key, selectedStyles.includes(key))
+	}
+	customToggles = ""
+	for (key in customGrids) {
+		customToggles += createToggle(key, selectedStyles.includes(key))
+	}
 
-    builtInToggles = '';
-    for (key in defaultGrids) {
-        builtInToggles += createToggle(key, selectedStyles.includes(key));
-    }
-    customToggles = '';
-    for (key in customGrids) {
-        customToggles += createToggle(key, selectedStyles.includes(key));
-    }
-
-    node.innerHTML =`
+	node.innerHTML = `
     <div class="dashboard-panel dashboard-right-panel__fade--enter-done" data-client-id="grid-helper-panel">
         <div class="dashboard-panel__header">
             <div class="dashboard-panel__title-row">
@@ -335,68 +351,78 @@ function openRightPanel() {
                 </div>
             </div>
         </form>
-    </div>`.trim();
+    </div>`.trim()
 
-    element.prepend(node.firstChild);
+	element.prepend(node.firstChild)
 
-    setPanelListeners();
+	setPanelListeners()
 }
 
 function closeRightPanel() {
-    gridPanel = document.querySelectorAll("[data-client-id='grid-helper-panel']");
-    if (gridPanel.length > 0) {
-        gridPanel[0].remove();
-        // dab-drn-4
-        element = document.querySelectorAll("[data-client-id='dab-drn-4']")[0];
-        element.classList.remove('dashboard-right-panel--open');
+	gridPanel = document.querySelectorAll(
+		"[data-client-id='grid-helper-panel']"
+	)
+	if (gridPanel.length > 0) {
+		gridPanel[0].remove()
+		// dab-drn-4
+		element = document.querySelectorAll("[data-client-id='dab-drn-4']")[0]
+		element.classList.remove("dashboard-right-panel--open")
 
-        // Dashboard Right Panel
-        element = document.getElementsByClassName('dashboard-right-nav')[0].firstChild;
-        element.classList.remove('dashboard-right-panel__width-wrapper--open');
-        element.style.minWidth = '0px';
-        element.style.width = '0px';
+		// Dashboard Right Panel
+		element = document.getElementsByClassName("dashboard-right-nav")[0]
+			.firstChild
+		element.classList.remove("dashboard-right-panel__width-wrapper--open")
+		element.style.minWidth = "0px"
+		element.style.width = "0px"
 
-        // Expand Canvas
-        element = document.querySelectorAll("[data-client-id='dab-dui-12']")[0];
-        element.classList.remove('dashboard-canvas__viewport--condensed');
-    }
+		// Expand Canvas
+		element = document.querySelectorAll("[data-client-id='dab-dui-12']")[0]
+		element.classList.remove("dashboard-canvas__viewport--condensed")
+	}
 }
 
 function railClicked(e) {
-    let isGridButton = gridButtonClicked(e);
+	let isGridButton = gridButtonClicked(e)
 
-    if (isGridButton) { // Clicked Helper Grid Icon
-        // Check if panel is already open. If so, close it
-        rightPanel = document.querySelectorAll("[data-client-id='dab-drn-4']")[0].firstChild;
-        if (rightPanel === null) { // Panel is closed
-            openRightPanel();
-        } else if (rightPanel.dataset.clientId === "grid-helper-panel") {
-            closeRightPanel();
-        } else {
-            closeSmartsheetPanel();
-            openRightPanel();
-        }
-    } else if (isGridButton !== null) { // Clicked Another Right Rail Icon
-        closeRightPanel();
-    }
+	if (isGridButton) {
+		// Clicked Helper Grid Icon
+		// Check if panel is already open. If so, close it
+		rightPanel = document.querySelectorAll(
+			"[data-client-id='dab-drn-4']"
+		)[0].firstChild
+		if (rightPanel === null) {
+			// Panel is closed
+			openRightPanel()
+		} else if (rightPanel.dataset.clientId === "grid-helper-panel") {
+			closeRightPanel()
+		} else {
+			closeSmartsheetPanel()
+			openRightPanel()
+		}
+	} else if (isGridButton !== null) {
+		// Clicked Another Right Rail Icon
+		closeRightPanel()
+	}
 }
 
 function addRailIcon(rightRail, railIcon) {
-    document.querySelectorAll("[data-client-id='dab-drn-0']")[0].addEventListener('click', railClicked);
+	document
+		.querySelectorAll("[data-client-id='dab-drn-0']")[0]
+		.addEventListener("click", railClicked)
 
-    // Add New Icon
-    rightRail.prepend(railIcon);
-    // railIcon.addEventListener('click', toggleRightPanel);
+	// Add New Icon
+	rightRail.prepend(railIcon)
+	// railIcon.addEventListener('click', toggleRightPanel);
 }
 
 function createRailIcon() {
-    const node = document.createElement('div');
-    node.innerHTML = `
+	const node = document.createElement("div")
+	node.innerHTML = `
     <div id="grid-helper-icon" class="dashboard-right-rail__button-wrapper">
         <div class="dashboard-right-rail__button-hover-wrapper">
-            <button aria-label="Grid Helper" data-client-id="grid-helper-button" aria-disabled="false" class="dashboard-right-rail__icon-button lodestar--focus-using-before css-1uc243b" type="button">
+            <button aria-label="Grid Helper" data-client-id="grid-helper-button" aria-disabled="false" class="dashboard-right-rail__icon-button lodestar--focus-using-before css-u1gjss" type="button">
                 <div class="css-14jo8qw">
-                    <span height="24px" width="24px" aria-hidden="true" role="presentation" class="css-1qwla2t">
+                    <span height="24px" width="24px" aria-hidden="true" role="presentation" data-grid-helper-id="grid-helper-button" class="css-1qwla2t">
                         <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="24" height="24" viewBox="0 0 24 24">
                             <image x="1" y="1" width="22" height="22" xlink:href="data:img/png;base64,iVBORw0KGgoAAAANSUhEUgAAABYAAAAWCAYAAADEtGw7AAAAP0lEQVQ4je2SMQoAIAzEcv7/z+fmYie1g3BZC+GgkW0qJBnAtk7uo7Q+IOJ+sYA6i0v6FqfjiDfS8eK/50W8mMaOIx16iM1OAAAAAElFTkSuQmCC"/>
                         </svg>
@@ -404,18 +430,18 @@ function createRailIcon() {
                 </div>
             </button>
         </div>
-    </div>`.trim();
+    </div>`.trim()
 
-    return node.firstChild;
+	return node.firstChild
 }
 
-const railIcon = createRailIcon();
+const railIcon = createRailIcon()
 
-var rightRailExists = setInterval(function() {
-    rightRail = document.querySelectorAll("[data-client-id='dab-drn-0']");
-    if (rightRail.length > 0) {
-        rightRail = rightRail[0];
-        clearInterval(rightRailExists);
-        addRailIcon(rightRail, railIcon);
-    }
-}, 100);
+var rightRailExists = setInterval(function () {
+	rightRail = document.querySelectorAll("[data-client-id='dab-drn-0']")
+	if (rightRail.length > 0) {
+		rightRail = rightRail[0]
+		clearInterval(rightRailExists)
+		addRailIcon(rightRail, railIcon)
+	}
+}, 100)

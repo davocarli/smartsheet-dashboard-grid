@@ -1,33 +1,33 @@
 {
-    "name": "Smartsheet Dashboard Overlay",
-    "description": "Adds the ability to overlay shapes & guide-lines on Smartsheet's dashboard editor to assist with more consistent widget placement.",
-    "version": "1.0.0",
-    "manifest_version": 3,
-    "icons": {
-        "16": "images/tictactoe-16.png",
-        "48": "images/tictactoe-48.png",
-        "128": "images/tictactoe-128.png"
-    },
-    "action": {
-        "default_title": "Click to add grid",
-        "default_icon": "images/tictactoe.png"
-    },
-    "options_page": "pages/options.html",
-    "permissions": ["activeTab", "scripting", "storage"],
-    "background": {
-        "service_worker": "background.js"
-    },
-    "content_scripts": [{
-        "css": ["css/grid-helper-style.css"],
-        "matches": ["https://app.smartsheet.com/*"]
-    }],
-    "host_permissions": [
-        "https://app.smartsheet.com/dashboards/*"
-    ],
-    "web_accessible_resources": [
-        {
-            "resources": ["images/grid.svg", "css/grid-helper-style.css"],
-            "matches": ["https://app.smartsheet.com/*"]
-        }
-    ]
+	"name": "Smartsheet Dashboard Overlay",
+	"description": "Adds the ability to overlay shapes & guide-lines on Smartsheet's dashboard editor to assist with more consistent widget placement.",
+	"version": "1.0.1",
+	"manifest_version": 3,
+	"icons": {
+		"16": "images/tictactoe-16.png",
+		"48": "images/tictactoe-48.png",
+		"128": "images/tictactoe-128.png"
+	},
+	"action": {
+		"default_title": "Click to add grid",
+		"default_icon": "images/tictactoe.png"
+	},
+	"options_page": "pages/options.html",
+	"permissions": ["activeTab", "scripting", "storage"],
+	"background": {
+		"service_worker": "background.js"
+	},
+	"content_scripts": [
+		{
+			"css": ["css/grid-helper-style.css"],
+			"matches": ["https://app.smartsheet.com/*"]
+		}
+	],
+	"host_permissions": ["https://app.smartsheet.com/dashboards/*"],
+	"web_accessible_resources": [
+		{
+			"resources": ["images/grid.svg", "css/grid-helper-style.css"],
+			"matches": ["https://app.smartsheet.com/*"]
+		}
+	]
 }
