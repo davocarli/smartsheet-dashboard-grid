@@ -24,11 +24,20 @@
 	},
 	"permissions": ["storage", "scripting", "activeTab"],
 	"host_permissions": ["https://app.smartsheet.com/*"],
+	"background": {
+		"service_worker": "background.js"
+	},
 	"content_scripts": [
 		{
 			"matches": ["https://app.smartsheet.com/*"],
-			"js": ["shared/grids.js", "addGrid.js"],
+			"js": ["shared/grids.js", "shared/controls.js", "addGrid.js"],
 			"run_at": "document_idle"
+		}
+	],
+	"web_accessible_resources": [
+		{
+			"resources": ["popup/popup.css"],
+			"matches": ["https://app.smartsheet.com/*"]
 		}
 	]
 }

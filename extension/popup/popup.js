@@ -1,4 +1,6 @@
-// Popup: the extension's controls, opened by clicking the toolbar icon.
+// Toolbar popup: the extension's controls, opened by clicking the toolbar
+// icon. This is the fallback for the button the content script adds to
+// Smartsheet's own editor toolbar, and works even if that toolbar changes.
 //
 // Settings live in chrome.storage.sync. The content script (addGrid.js)
 // listens for storage changes and re-renders the overlay on its own, so the
@@ -6,69 +8,18 @@
 // whether the editor canvas was found so the user can be told if not.
 "use strict"
 
-const DEFAULT_GRIDS = globalThis.SSGH_DEFAULT_GRIDS
 const STORAGE_DEFAULTS = globalThis.SSGH_STORAGE_DEFAULTS
 const SMARTSHEET_ORIGIN = "https://app.smartsheet.com/"
-
-const noticeEl = document.getElementById("notice")
-const controlsEl = document.getElementById("controls")
-const enableEl = document.getElementById("enable-grid")
-const builtInEl = document.getElementById("built-in-layouts")
-const customEl = document.getElementById("custom-layouts")
 
 let settings = { ...STORAGE_DEFAULTS }
 let activeTab = null
 
-function showNotice(text) {
-	noticeEl.textContent = text
-	noticeEl.hidden = !text
-}
-
-function createToggle(name, checked) {
-	const label = document.createElement("label")
-	label.className = "toggle"
-
-	const input = document.createElement("input")
-	input.type = "checkbox"
-	input.checked = checked
-	input.dataset.style = name
-	input.addEventListener("change", () => setStyleEnabled(name, input.checked))
-
-	const switchEl = document.createElement("span")
-	switchEl.className = "switch"
-	switchEl.setAttribute("aria-hidden", "true")
-
-	const text = document.createElement("span")
-	text.className = "label"
-	text.textContent = name
-
-	label.append(input, switchEl, text)
-	return label
-}
-
-function renderToggles() {
-	enableEl.checked = settings.gridEnabled
-
-	builtInEl.replaceChildren(
-		...Object.keys(DEFAULT_GRIDS).map((name) =>
-			createToggle(name, settings.gridStyles.includes(name))
-		)
-	)
-
-	const customNames = Object.keys(settings.customGrids)
-	if (customNames.length === 0) {
-		const empty = document.createElement("p")
-		empty.className = "empty"
-		empty.textContent = "No custom layouts yet."
-		customEl.replaceChildren(empty)
-	} else {
-		customEl.replaceChildren(
-			...customNames.map((name) =>
-				createToggle(name, settings.gridStyles.includes(name))
-			)
-		)
-	}
-}
+const controls = globalThis.SSGH_createControls({
+	onEnabledChange: setGridEnabled,
+	onStyleChange: setStyleEnabled,
+	onOpenOptions: () => chrome.runtime.openOptionsPage(),
+})
+document.body.appendChild(controls.element)
 
 async function setStyleEnabled(name, enabled) {
 	const styles = settings.gridStyles.filter((style) => style !== name)
@@ -94,7 +45,7 @@ async function sendToTab(message, { inject = true } = {}) {
 		if (!inject) throw error
 		await chrome.scripting.executeScript({
 			target: { tabId: activeTab.id },
-			files: ["shared/grids.js", "addGrid.js"],
+			files: ["shared/grids.js", "shared/controls.js", "addGrid.js"],
 		})
 		return sendToTab(message, { inject: false })
 	}
@@ -106,7 +57,7 @@ async function refreshOverlay() {
 		state = await sendToTab({ type: "refresh" })
 	} catch (error) {
 		console.error("Could not reach the Smartsheet tab", error)
-		showNotice("Could not reach the Smartsheet tab. Reload the page and try again.")
+		controls.setNotice("Could not reach the Smartsheet tab. Reload the page and try again.")
 		return
 	}
 	describeState(state)
@@ -114,15 +65,15 @@ async function refreshOverlay() {
 
 function describeState(state) {
 	if (!state) {
-		showNotice("")
+		controls.setNotice("")
 	} else if (!state.onDashboard) {
-		showNotice("Open a Smartsheet dashboard to use the grid overlay.")
+		controls.setNotice("Open a Smartsheet dashboard to use the grid overlay.")
 	} else if (state.enabled && state.canvasFound === false) {
-		showNotice(
+		controls.setNotice(
 			"The grid shows in the dashboard's editing view. Open the editor (pencil icon) and it will appear."
 		)
 	} else {
-		showNotice("")
+		controls.setNotice("")
 	}
 }
 
@@ -131,39 +82,43 @@ async function init() {
 	activeTab = tab
 
 	if (!tab || !tab.url || !tab.url.startsWith(SMARTSHEET_ORIGIN)) {
-		showNotice("Open a dashboard in Smartsheet (app.smartsheet.com) to use this extension.")
+		controls.setControlsVisible(false)
+		controls.setNotice(
+			"Open a dashboard in Smartsheet (app.smartsheet.com) to use this extension."
+		)
 		return
 	}
 
 	settings = await chrome.storage.sync.get(STORAGE_DEFAULTS)
 
 	// Drop any saved style that no longer exists (e.g. a deleted custom grid).
-	const known = new Set([...Object.keys(DEFAULT_GRIDS), ...Object.keys(settings.customGrids)])
+	const known = new Set([
+		...Object.keys(globalThis.SSGH_DEFAULT_GRIDS),
+		...Object.keys(settings.customGrids),
+	])
 	const pruned = settings.gridStyles.filter((style) => known.has(style))
 	if (pruned.length !== settings.gridStyles.length) {
 		settings.gridStyles = pruned
 		await chrome.storage.sync.set({ gridStyles: pruned })
 	}
 
-	renderToggles()
-	controlsEl.hidden = false
+	controls.update(settings)
 
-	enableEl.addEventListener("change", () => setGridEnabled(enableEl.checked))
+	// Keep in step with changes made from the in-page panel or options page.
+	chrome.storage.onChanged.addListener((changes, area) => {
+		if (area !== "sync") return
+		for (const key of Object.keys(STORAGE_DEFAULTS)) {
+			if (key in changes) settings[key] = changes[key].newValue ?? STORAGE_DEFAULTS[key]
+		}
+		controls.update(settings)
+	})
 
 	try {
 		describeState(await sendToTab({ type: "getState" }))
 	} catch (error) {
 		console.error("Could not reach the Smartsheet tab", error)
-		showNotice("Could not reach the Smartsheet tab. Reload the page and try again.")
+		controls.setNotice("Could not reach the Smartsheet tab. Reload the page and try again.")
 	}
 }
-
-function openOptions(event) {
-	event.preventDefault()
-	chrome.runtime.openOptionsPage()
-}
-
-document.getElementById("settings").addEventListener("click", openOptions)
-document.getElementById("open-options").addEventListener("click", openOptions)
 
 init()

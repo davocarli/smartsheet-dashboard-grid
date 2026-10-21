@@ -1,10 +1,11 @@
-// Content script: draws the overlay on Smartsheet's dashboard editor.
+// Content script: draws the overlay on Smartsheet's dashboard editor and
+// adds a "Grid Helper" button next to "Widget Settings" in the editor
+// toolbar, which opens a panel with the same controls as the toolbar popup.
 //
-// The script keeps no UI of its own. The extension popup (popup/popup.js)
-// reads and writes chrome.storage.sync and asks this script to re-render,
-// and the script also re-renders on its own when storage changes, when the
-// editor canvas appears (Smartsheet is a single-page app) or when the
-// canvas is resized.
+// Settings live in chrome.storage.sync. Both the in-page panel and the
+// extension popup (popup/popup.js) write there; this script re-renders when
+// storage changes, when the editor canvas appears (Smartsheet is a
+// single-page app) or when the canvas is resized.
 (function () {
 	"use strict"
 
@@ -16,6 +17,9 @@
 	const OVERLAY_ATTR = "data-grid-overlay"
 	const CANVAS_SELECTOR = "[data-client-id='dab-dui-2']"
 	const SVG_NS = "http://www.w3.org/2000/svg"
+	const PANEL_WIDTH = 300
+	// Smartsheet's "Widget Settings" toolbar button; ours goes right after it.
+	const WIDGET_SETTINGS_SELECTOR = "button[data-client-id='dab-drn-2']"
 
 	let settings = { ...STORAGE_DEFAULTS }
 	let observedCanvas = null
@@ -114,6 +118,7 @@
 		}
 
 		// Fallbacks in case Smartsheet renames the client id.
+		if (!isDashboardPage()) return null
 		for (const svg of document.querySelectorAll("svg")) {
 			if (svg.querySelectorAll("path").length < 20) continue
 			const grid = analyseGridSvg(svg)
@@ -240,7 +245,200 @@
 		return { enabled: true, canvasFound: true, columns: grid.columns, rows: grid.rows }
 	}
 
-	// --- Keeping the overlay in sync ---------------------------------------
+	// --- Toolbar button --------------------------------------------------------
+
+	let toolbarButton = null
+
+	function findWidgetSettingsButton() {
+		const known = document.querySelector(WIDGET_SETTINGS_SELECTOR)
+		if (known) return known
+		// Smartsheet keeps hidden copies of the toolbar for measuring; skip those.
+		for (const button of document.querySelectorAll('button[aria-label="Widget Settings"]')) {
+			if (!button.closest("[data-sds-toolbar2-h], [data-sds-toolbar2-h-i]")) return button
+		}
+		return null
+	}
+
+	function gridIcon() {
+		const svg = document.createElementNS(SVG_NS, "svg")
+		svg.setAttribute("xmlns", SVG_NS)
+		svg.setAttribute("width", "20")
+		svg.setAttribute("height", "20")
+		svg.setAttribute("viewBox", "0 0 20 20")
+		svg.setAttribute("fill", "none")
+		svg.setAttribute("aria-hidden", "true")
+		const path = document.createElementNS(SVG_NS, "path")
+		path.setAttribute("stroke", "currentColor")
+		path.setAttribute("stroke-width", "1.4")
+		path.setAttribute("stroke-linecap", "round")
+		path.setAttribute(
+			"d",
+			"M7.3 3.5v13M12.7 3.5v13M3.5 7.3h13M3.5 12.7h13"
+		)
+		svg.appendChild(path)
+		return svg
+	}
+
+	// Clone Smartsheet's own button so ours matches the current build's styling,
+	// then swap in our icon, label and behaviour. The clone has no React
+	// fiber, so Smartsheet's handlers ignore it.
+	function buildToolbarButton(anchor) {
+		const button = anchor.cloneNode(true)
+		button.setAttribute("data-grid-helper", "button")
+		button.removeAttribute("data-client-id")
+		button.removeAttribute("data-focusable-item")
+		button.removeAttribute("id")
+		button.setAttribute("aria-label", "Grid Helper")
+		button.setAttribute("aria-pressed", "false")
+		button.setAttribute("aria-haspopup", "dialog")
+		button.setAttribute("aria-disabled", "false")
+		button.tabIndex = 0
+
+		const existingIcon = button.querySelector("svg")
+		if (existingIcon) existingIcon.replaceWith(gridIcon())
+		else button.prepend(gridIcon())
+
+		const label = button.querySelector(".sds-button-content")
+		if (label) label.textContent = "Grid Helper"
+
+		button.addEventListener("click", (event) => {
+			event.preventDefault()
+			event.stopPropagation()
+			togglePanel()
+		})
+		return button
+	}
+
+	function ensureToolbarButton() {
+		if (toolbarButton && toolbarButton.isConnected) return
+		toolbarButton = null
+		const anchor = findWidgetSettingsButton()
+		if (!anchor) {
+			if (panelOpen) closePanel()
+			return
+		}
+		toolbarButton = buildToolbarButton(anchor)
+		anchor.insertAdjacentElement("afterend", toolbarButton)
+		if (panelOpen) positionPanel()
+	}
+
+	// --- In-page panel -----------------------------------------------------
+
+	let panelHost = null
+	let panelControls = null
+	let panelOpen = false
+
+	function smartsheetTheme() {
+		const key = (document.body && document.body.dataset.smarThemeKey) || ""
+		return /dark/i.test(key) ? "theme-dark" : "theme-light"
+	}
+
+	function createPanel() {
+		panelHost = document.createElement("div")
+		panelHost.setAttribute("data-grid-helper", "panel")
+		panelHost.setAttribute("role", "dialog")
+		panelHost.setAttribute("aria-label", "Grid Helper")
+		Object.assign(panelHost.style, {
+			position: "fixed",
+			top: "0",
+			left: "0",
+			zIndex: "2147483646",
+			overflowY: "auto",
+			borderRadius: "8px",
+			boxShadow: "0 8px 24px rgba(0, 0, 0, 0.25)",
+		})
+
+		const shadow = panelHost.attachShadow({ mode: "open" })
+		const stylesheet = document.createElement("link")
+		stylesheet.rel = "stylesheet"
+		stylesheet.href = chrome.runtime.getURL("popup/popup.css")
+		const extra = document.createElement("style")
+		extra.textContent = ".ssgh-root { border: 1px solid var(--border); border-radius: 8px; }"
+
+		panelControls = globalThis.SSGH_createControls({
+			onEnabledChange: (enabled) => chrome.storage.sync.set({ gridEnabled: enabled }),
+			onStyleChange: (name, enabled) => {
+				const styles = settings.gridStyles.filter((style) => style !== name)
+				if (enabled) styles.push(name)
+				chrome.storage.sync.set({ gridStyles: styles })
+			},
+			onOpenOptions: () => chrome.runtime.sendMessage({ type: "openOptionsPage" }),
+			onClose: closePanel,
+		})
+		panelControls.element.classList.add(smartsheetTheme())
+		shadow.append(stylesheet, extra, panelControls.element)
+	}
+
+	function positionPanel() {
+		if (!panelHost || !toolbarButton) return
+		const rect = toolbarButton.getBoundingClientRect()
+		const margin = 8
+		const top = Math.round(rect.bottom + 6)
+		const left = Math.round(
+			Math.max(margin, Math.min(rect.left, window.innerWidth - PANEL_WIDTH - margin))
+		)
+		panelHost.style.top = top + "px"
+		panelHost.style.left = left + "px"
+		panelHost.style.maxHeight = Math.max(120, window.innerHeight - top - margin) + "px"
+	}
+
+	function updatePanelNotice(state) {
+		if (!panelControls) return
+		if (state && state.enabled && state.canvasFound === false) {
+			panelControls.setNotice(
+				"The grid shows in the dashboard's editing view. Open the editor (pencil icon) and it will appear."
+			)
+		} else {
+			panelControls.setNotice("")
+		}
+	}
+
+	function onDocumentPointerDown(event) {
+		const path = event.composedPath()
+		if (path.includes(panelHost) || path.includes(toolbarButton)) return
+		closePanel()
+	}
+
+	function onDocumentKeyDown(event) {
+		if (event.key === "Escape") {
+			closePanel()
+			if (toolbarButton) toolbarButton.focus()
+		}
+	}
+
+	function openPanel() {
+		if (!panelHost) createPanel()
+		panelControls.element.classList.remove("theme-light", "theme-dark")
+		panelControls.element.classList.add(smartsheetTheme())
+		panelControls.update(settings)
+		updatePanelNotice({ enabled: settings.gridEnabled, canvasFound: findGrid() !== null })
+		document.body.appendChild(panelHost)
+		panelOpen = true
+		positionPanel()
+		if (toolbarButton) toolbarButton.setAttribute("aria-pressed", "true")
+		document.addEventListener("pointerdown", onDocumentPointerDown, true)
+		document.addEventListener("keydown", onDocumentKeyDown, true)
+		window.addEventListener("resize", positionPanel)
+		window.addEventListener("scroll", positionPanel, true)
+	}
+
+	function closePanel() {
+		if (!panelOpen) return
+		panelOpen = false
+		if (panelHost) panelHost.remove()
+		if (toolbarButton) toolbarButton.setAttribute("aria-pressed", "false")
+		document.removeEventListener("pointerdown", onDocumentPointerDown, true)
+		document.removeEventListener("keydown", onDocumentKeyDown, true)
+		window.removeEventListener("resize", positionPanel)
+		window.removeEventListener("scroll", positionPanel, true)
+	}
+
+	function togglePanel() {
+		if (panelOpen) closePanel()
+		else openPanel()
+	}
+
+	// --- Keeping everything in sync ------------------------------------------
 
 	function observeCanvas(canvas) {
 		if (observedCanvas === canvas) return
@@ -252,20 +450,23 @@
 		resizeObserver.observe(canvas)
 	}
 
-	// Smartsheet swaps the editor in and out without a page load, so watch
-	// for the canvas to (re)appear and draw the overlay when it does.
+	// Smartsheet swaps the editor and its toolbar in and out without a page
+	// load, so watch the DOM and re-add the button / overlay when they vanish.
 	// (A timer is used rather than requestAnimationFrame, which never fires
 	// while the tab is hidden.)
 	let scheduled = null
+	function sync() {
+		scheduled = null
+		ensureToolbarButton()
+		// Cheap check first; the full grid search only runs when the overlay
+		// is missing (editor just opened, or Smartsheet re-rendered).
+		if (settings.gridEnabled && !overlayPresent() && findGrid()) {
+			updatePanelNotice(render())
+		}
+	}
 	const domObserver = new MutationObserver(() => {
-		if (!settings.gridEnabled || scheduled !== null) return
-		scheduled = setTimeout(() => {
-			scheduled = null
-			// Cheap check first; the full grid search only runs when the
-			// overlay is missing (editor just opened, or Smartsheet re-rendered).
-			if (overlayPresent()) return
-			if (findGrid()) render()
-		}, 50)
+		if (scheduled !== null) return
+		scheduled = setTimeout(sync, 50)
 	})
 	domObserver.observe(document.documentElement, { childList: true, subtree: true })
 
@@ -274,6 +475,15 @@
 			settings = items
 			return settings
 		})
+	}
+
+	function applySettings() {
+		const state = render()
+		if (panelOpen) {
+			panelControls.update(settings)
+			updatePanelNotice(state)
+		}
+		return state
 	}
 
 	chrome.storage.onChanged.addListener((changes, area) => {
@@ -285,7 +495,7 @@
 				changed = true
 			}
 		}
-		if (changed) render()
+		if (changed) applySettings()
 	})
 
 	chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -303,7 +513,7 @@
 				loadSettings().then(() => {
 					sendResponse({
 						onDashboard: isDashboardPage(),
-						...render(),
+						...applySettings(),
 					})
 				})
 				return true // async response
@@ -312,5 +522,8 @@
 		}
 	})
 
-	loadSettings().then(render)
+	loadSettings().then(() => {
+		ensureToolbarButton()
+		render()
+	})
 })()

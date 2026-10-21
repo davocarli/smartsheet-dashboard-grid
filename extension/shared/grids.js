@@ -11,19 +11,20 @@
 (function () {
 	if (globalThis.SSGH_DEFAULT_GRIDS) return
 
-	// Evenly spaced columns of equal width, centred on the canvas.
-	function columns(count, totalColumns, { color, opacity, gutter, margin }) {
-		const width = Math.max(
-			1,
-			Math.floor((totalColumns - 2 * margin - (count - 1) * gutter) / count)
-		)
+	// Equal-width columns separated by one-cell gutters with no outer margin,
+	// which is how Smartsheet's own widgets tend to be laid out. On the
+	// current 119-cell canvas 3, 4, 6 and 12 columns all divide exactly; on
+	// any other width the leftover cells are split evenly between the edges.
+	function columns(count, totalColumns, color) {
+		const gutter = 1
+		const width = Math.max(1, Math.floor((totalColumns - (count - 1) * gutter) / count))
 		const used = count * width + (count - 1) * gutter
 		const start = Math.floor((totalColumns - used) / 2)
 		const result = []
 		for (let i = 0; i < count; i++) {
 			result.push({
 				color,
-				opacity,
+				opacity: "20%",
 				height: -1,
 				width,
 				x: start + i * (width + gutter),
@@ -44,10 +45,10 @@
 				y: 0,
 			},
 		],
-		"11 Columns": (totalColumns) =>
-			columns(11, totalColumns, { color: "Red", opacity: "20%", gutter: 2, margin: 2 }),
-		"4 Columns": (totalColumns) =>
-			columns(4, totalColumns, { color: "Gray", opacity: "20%", gutter: 1, margin: 1 }),
+		"3 Columns": (totalColumns) => columns(3, totalColumns, "Green"),
+		"4 Columns": (totalColumns) => columns(4, totalColumns, "Gray"),
+		"6 Columns": (totalColumns) => columns(6, totalColumns, "Orange"),
+		"12 Columns": (totalColumns) => columns(12, totalColumns, "Red"),
 	})
 
 	// Names that custom layouts may not use.
@@ -59,7 +60,7 @@
 	// Default values for everything kept in chrome.storage.sync.
 	globalThis.SSGH_STORAGE_DEFAULTS = Object.freeze({
 		gridEnabled: false,
-		gridStyles: ["11 Columns"],
+		gridStyles: ["12 Columns"],
 		customGrids: {},
 	})
 })()
