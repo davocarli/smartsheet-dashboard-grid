@@ -1,0 +1,162 @@
+:root {
+	color-scheme: light dark;
+	--fg: #161616;
+	--bg: #ffffff;
+	--muted: #6b6b6b;
+	--border: #d9d9d9;
+	--accent: #3576ba;
+	--error: #c62828;
+	--code-bg: #f3f3f3;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		--fg: #f0f0f0;
+		--bg: #1f1f1f;
+		--muted: #a8a8a8;
+		--border: #444444;
+		--error: #ff8a80;
+		--code-bg: #2b2b2b;
+	}
+}
+
+body {
+	max-width: 760px;
+	margin: 0 auto;
+	padding: 24px 16px 48px;
+	font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+	color: var(--fg);
+	background: var(--bg);
+}
+
+h1 {
+	font-size: 22px;
+}
+
+h2 {
+	font-size: 17px;
+	margin-top: 28px;
+}
+
+h3 {
+	font-size: 14px;
+	color: var(--muted);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	margin-bottom: 6px;
+}
+
+.checkbox-list {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.checkbox-list .row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.checkbox-list .row label {
+	flex: 1;
+}
+
+.hint {
+	margin: 0 0 8px;
+	color: var(--muted);
+	font-size: 13px;
+}
+
+.checkbox-list .empty {
+	color: var(--muted);
+}
+
+.actions {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-top: 16px;
+}
+
+button {
+	font: inherit;
+	padding: 6px 12px;
+	border-radius: 6px;
+	border: 1px solid var(--accent);
+	background: var(--accent);
+	color: #fff;
+	cursor: pointer;
+}
+
+button.secondary,
+.checkbox-list button {
+	background: transparent;
+	color: var(--accent);
+}
+
+button.secondary.danger,
+.checkbox-list button.danger {
+	border-color: var(--error);
+	color: var(--error);
+}
+
+.checkbox-list button {
+	padding: 2px 8px;
+	font-size: 12px;
+}
+
+.status {
+	color: var(--muted);
+}
+
+.status.error {
+	color: var(--error);
+}
+
+.editor {
+	margin-top: 28px;
+	padding-top: 8px;
+	border-top: 1px solid var(--border);
+}
+
+.editor label {
+	display: block;
+	margin-top: 12px;
+	font-weight: 600;
+}
+
+.editor input[type="text"],
+.editor textarea {
+	width: 100%;
+	box-sizing: border-box;
+	margin-top: 4px;
+	padding: 6px 8px;
+	font: inherit;
+	color: inherit;
+	background: var(--bg);
+	border: 1px solid var(--border);
+	border-radius: 6px;
+}
+
+.editor textarea {
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	font-size: 13px;
+}
+
+code,
+pre {
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	font-size: 13px;
+	background: var(--code-bg);
+	border-radius: 4px;
+}
+
+code {
+	padding: 1px 4px;
+}
+
+pre {
+	padding: 8px 10px;
+	overflow-x: auto;
+}

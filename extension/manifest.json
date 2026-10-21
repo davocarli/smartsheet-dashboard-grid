@@ -1,32 +1,42 @@
 {
 	"name": "Smartsheet Dashboard Overlay",
-	"description": "Adds the ability to overlay shapes & guide-lines on Smartsheet's dashboard editor to assist with more consistent widget placement.",
-	"version": "1.0.1",
+	"description": "Overlay shapes and guide-lines on Smartsheet's dashboard editor to assist with more consistent widget placement.",
+	"version": "2.0.0",
 	"manifest_version": 3,
+	"minimum_chrome_version": "116",
 	"icons": {
 		"16": "images/tictactoe-16.png",
 		"48": "images/tictactoe-48.png",
 		"128": "images/tictactoe-128.png"
 	},
 	"action": {
-		"default_title": "Click to add grid",
-		"default_icon": "images/tictactoe.png"
+		"default_title": "Smartsheet Dashboard Overlay",
+		"default_icon": {
+			"16": "images/tictactoe-16.png",
+			"48": "images/tictactoe-48.png",
+			"128": "images/tictactoe-128.png"
+		},
+		"default_popup": "popup/popup.html"
 	},
-	"options_page": "pages/options.html",
-	"permissions": ["activeTab", "scripting", "storage"],
+	"options_ui": {
+		"page": "pages/options.html",
+		"open_in_tab": true
+	},
+	"permissions": ["storage", "scripting", "activeTab"],
+	"host_permissions": ["https://app.smartsheet.com/*"],
 	"background": {
 		"service_worker": "background.js"
 	},
 	"content_scripts": [
 		{
-			"css": ["css/grid-helper-style.css"],
-			"matches": ["https://app.smartsheet.com/*"]
+			"matches": ["https://app.smartsheet.com/*"],
+			"js": ["shared/grids.js", "shared/controls.js", "addGrid.js"],
+			"run_at": "document_idle"
 		}
 	],
-	"host_permissions": ["https://app.smartsheet.com/dashboards/*"],
 	"web_accessible_resources": [
 		{
-			"resources": ["images/grid.svg", "css/grid-helper-style.css"],
+			"resources": ["popup/popup.css"],
 			"matches": ["https://app.smartsheet.com/*"]
 		}
 	]

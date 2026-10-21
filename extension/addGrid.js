@@ -1,447 +1,529 @@
-defaultGrids = {
-	// Height of -1 will extend all the way down infinitely starting from y coordinate.
-	// Width of -1 will extend all the way to the right infinitely starting from x coordinate.
-	"Center Line": [
-		// Center Column
-		{ color: "Blue", opacity: "30%", height: -1, width: 1, x: 44, y: 0 },
-	],
-	"11 Columns": [
-		// Left Side
-		{ color: "Red", height: -1, opacity: "20%", width: 6, x: 2, y: 0 },
-		{ color: "Red", height: -1, opacity: "20%", width: 6, x: 10, y: 0 },
-		{ color: "Red", height: -1, opacity: "20%", width: 6, x: 18, y: 0 },
-		{ color: "Red", height: -1, opacity: "20%", width: 6, x: 26, y: 0 },
-		{ color: "Red", height: -1, opacity: "20%", width: 6, x: 34, y: 0 },
+// Content script: draws the overlay on Smartsheet's dashboard editor and
+// adds a "Grid Helper" button next to "Widget Settings" in the editor
+// toolbar, which opens a panel with the same controls as the toolbar popup.
+//
+// Settings live in chrome.storage.sync. Both the in-page panel and the
+// extension popup (popup/popup.js) write there; this script re-renders when
+// storage changes, when the editor canvas appears (Smartsheet is a
+// single-page app) or when the canvas is resized.
+(function () {
+	"use strict"
 
-		// Center
-		{ color: "Red", height: -1, opacity: "20%", width: 5, x: 42, y: 0 },
+	if (globalThis.__ssGridHelperLoaded) return
+	globalThis.__ssGridHelperLoaded = true
 
-		// Right Side
-		{ color: "Red", height: -1, opacity: "20%", width: 6, x: 49, y: 0 },
-		{ color: "Red", height: -1, opacity: "20%", width: 6, x: 57, y: 0 },
-		{ color: "Red", height: -1, opacity: "20%", width: 6, x: 65, y: 0 },
-		{ color: "Red", height: -1, opacity: "20%", width: 6, x: 73, y: 0 },
-		{ color: "Red", height: -1, opacity: "20%", width: 6, x: 81, y: 0 },
-	],
-	"4 Columns": [
-		// 4 Quarters
-		{ color: "Gray", height: -1, opacity: "20%", width: 21, x: 1, y: 0 },
-		{ color: "Gray", height: -1, opacity: "20%", width: 21, x: 23, y: 0 },
-		{ color: "Gray", height: -1, opacity: "20%", width: 21, x: 45, y: 0 },
-		{ color: "Gray", height: -1, opacity: "20%", width: 21, x: 67, y: 0 },
-	],
-}
-customGrids = null
-selectedStyles = null
-chrome.storage.sync.get(
-	{
-		gridStyles: [],
-		customGrids: {},
-	},
-	function (items) {
-		customGrids = items.customGrids
-		selectedStyles = items.gridStyles
-	}
-)
+	const DEFAULT_GRIDS = globalThis.SSGH_DEFAULT_GRIDS
+	const STORAGE_DEFAULTS = globalThis.SSGH_STORAGE_DEFAULTS
+	const OVERLAY_ATTR = "data-grid-overlay"
+	const CANVAS_SELECTOR = "[data-client-id='dab-dui-2']"
+	const SVG_NS = "http://www.w3.org/2000/svg"
+	const PANEL_WIDTH = 300
+	// Smartsheet's "Widget Settings" toolbar button; ours goes right after it.
+	const WIDGET_SETTINGS_SELECTOR = "button[data-client-id='dab-drn-2']"
 
-function removeHighlights(group) {
-	existing = document.querySelectorAll("[data-grid-overlay='" + group + "']")
-	if (existing.length > 0) {
-		for (let i = existing.length - 1; i >= 0; i--) {
-			existing[i].remove()
+	let settings = { ...STORAGE_DEFAULTS }
+	let observedCanvas = null
+	let resizeObserver = null
+
+	// --- Editor canvas -----------------------------------------------------
+	//
+	// Smartsheet draws the editor's dotted grid as an <svg> full of <path>
+	// lines, one per grid column and row. The grid cell size is recovered
+	// from the spacing of those lines. Older builds used a <div> whose
+	// background-size held the cell size; that is kept as a fallback.
+
+	const LINE_RE = /^M\s*(-?[\d.]+)[\s,]+(-?[\d.]+)\s*L\s*(-?[\d.]+)[\s,]+(-?[\d.]+)\s*$/
+
+	function parseLine(d) {
+		const match = LINE_RE.exec(d || "")
+		if (!match) return null
+		return {
+			x1: parseFloat(match[1]),
+			y1: parseFloat(match[2]),
+			x2: parseFloat(match[3]),
+			y2: parseFloat(match[4]),
 		}
 	}
-}
 
-function gridIsEnabled() {
-	return document.querySelectorAll("[data-grid-overlay='parent']").length > 0
-}
-
-function getCurrentDimensions() {
-	parent = document.querySelectorAll("[data-client-id='dab-dui-2']")[0]
-	gridDimensions = parent.style.backgroundSize.replaceAll("px", "").split(" ")
-	x = parseInt(gridDimensions[0])
-	y = parseInt(gridDimensions[1])
-	return [x, y]
-}
-
-function buildRectangle(x, y, name, rectangle) {
-	leftPosition = x * rectangle.x + "px"
-	topPosition = y * rectangle.y + "px"
-	height = null
-	width = null
-	if (rectangle.height == -1) {
-		height = "100%"
-	} else {
-		height = y * rectangle.height + "px"
-	}
-	if (rectangle.width == -1) {
-		width = "100%"
-	} else {
-		width = x * rectangle.width + "px"
-	}
-	gridHighlightElement =
-		'<div data-grid-overlay="' +
-		name +
-		'" style="height: ' +
-		height +
-		"; width: " +
-		width +
-		";  background-color: " +
-		rectangle.color +
-		"; opacity: " +
-		rectangle.opacity +
-		"; position: absolute; left: " +
-		leftPosition +
-		"; top: " +
-		topPosition +
-		'; overflow: hidden;"></div>'
-	return gridHighlightElement
-}
-
-function createParent() {
-	document.querySelectorAll("[data-client-id='dab-dui-2']")[0].innerHTML =
-		'<div style="position: relative; overflow: hidden; height: 100%; width: 100;" data-grid-overlay="parent"></div>'
-}
-
-function addHighlights(name, specs) {
-	if (!gridIsEnabled()) return
-
-	gridParent = document.querySelector("[data-grid-overlay='parent']")
-	// parent = parent[0];
-	;[x, y] = getCurrentDimensions()
-	newHTML = ""
-	for (let j = 0; j < specs.length; j++) {
-		newHTML += buildRectangle(x, y, name, specs[j])
-	}
-	gridParent.innerHTML += newHTML
-}
-
-function gridButtonClicked(e) {
-	return e.target.getAttribute("data-grid-helper-id") == "grid-helper-button"
-}
-
-function closeSmartsheetPanel() {
-	activeButton = document.getElementsByClassName(
-		"dashboard-right-rail__button-hover-wrapper--active"
-	)[0].firstChild
-	activeButton.click()
-}
-
-function openSettings() {
-	chrome.runtime.sendMessage({ action: "openOptionsPage" })
-}
-
-function removeSelectedStyle(style) {
-	currentIndex = selectedStyles.indexOf(style)
-	if (currentIndex !== -1) {
-		selectedStyles.splice(currentIndex, 1)
-	}
-}
-
-function handleToggle(enabled, clientId) {
-	if (clientId == "Enable Grid Helper") {
-		if (enabled) {
-			createParent()
-			for (let i = 0; i < selectedStyles.length; i++) {
-				style = selectedStyles[i]
-				if (style in defaultGrids) {
-					addHighlights(style, defaultGrids[style])
-				} else if (style in customGrids) {
-					addHighlights(style, customGrids[style])
-				} else {
-					removeSelectedStyle(style)
-					chrome.storage.sync.set({ gridStyles: selectedStyles })
-				}
-			}
-		} else {
-			removeHighlights("parent")
+	// Typical distance between neighbouring values (the median gap), which
+	// ignores the half-pixel border lines Smartsheet adds at the edges.
+	function spacing(values) {
+		const sorted = [...new Set(values)].sort((a, b) => a - b)
+		const gaps = []
+		for (let i = 1; i < sorted.length; i++) {
+			const gap = sorted[i] - sorted[i - 1]
+			if (gap > 1) gaps.push(gap)
 		}
-	} else {
-		if (enabled) {
-			// Show rectangles
-			if (clientId in defaultGrids) {
-				addHighlights(clientId, defaultGrids[clientId])
-			} else if (clientId in customGrids) {
-				addHighlights(clientId, customGrids[clientId])
-			}
-			// Add to selectedStyles
-			if (!selectedStyles.includes(clientId))
-				selectedStyles.push(clientId)
-		} else {
-			// Remove rectangles
-			removeHighlights(clientId)
-			// Remove from selectedStyles
-			removeSelectedStyle(clientId)
+		if (gaps.length < 3) return null
+		gaps.sort((a, b) => a - b)
+		return gaps[Math.floor(gaps.length / 2)]
+	}
+
+	function analyseGridSvg(svg) {
+		const xs = []
+		const ys = []
+		for (const path of svg.querySelectorAll("path")) {
+			const line = parseLine(path.getAttribute("d"))
+			if (!line) continue
+			if (Math.abs(line.x1 - line.x2) < 0.01) xs.push(line.x1)
+			else if (Math.abs(line.y1 - line.y2) < 0.01) ys.push(line.y1)
 		}
-		// Save selectedStyles
-		chrome.storage.sync.set({ gridStyles: selectedStyles })
+		if (xs.length < 5 || ys.length < 5) return null
+
+		const cellX = spacing(xs)
+		const cellY = spacing(ys)
+		const width = svg.width.baseVal.value
+		const height = svg.height.baseVal.value
+		if (!cellX || !cellY || !(width > 0) || !(height > 0)) return null
+
+		return {
+			kind: "svg",
+			host: svg,
+			cell: { x: cellX, y: cellY },
+			size: { width, height },
+			columns: Math.round(width / cellX),
+			rows: Math.round(height / cellY),
+		}
 	}
-}
 
-function findParentElementofType(element, type) {
-	while (element.nodeName != type) {
-		element = element.parentElement
-		if (element == null) return null
+	function analyseLegacyCanvas(element) {
+		if (!element || !element.style) return null
+		const match = element.style.backgroundSize.match(
+			/^\s*(\d+(?:\.\d+)?)px\s+(\d+(?:\.\d+)?)px\s*$/
+		)
+		if (!match) return null
+		const cellX = parseFloat(match[1])
+		const cellY = parseFloat(match[2])
+		if (!(cellX > 0) || !(cellY > 0)) return null
+		const width = element.clientWidth
+		const height = element.clientHeight
+		return {
+			kind: "legacy",
+			host: element,
+			cell: { x: cellX, y: cellY },
+			size: { width, height },
+			columns: Math.round(width / cellX),
+			rows: Math.round(height / cellY),
+		}
 	}
-	return element
-}
 
-function switchToggle(e) {
-	label = findParentElementofType(e.target, "LABEL")
+	function findGrid() {
+		const known = document.querySelector(CANVAS_SELECTOR)
+		if (known) {
+			const grid =
+				known instanceof SVGSVGElement
+					? analyseGridSvg(known)
+					: analyseLegacyCanvas(known)
+			if (grid) return grid
+		}
 
-	checkbox = label.getElementsByTagName("div")[1]
-
-	if (checkbox.classList.contains("css-17sgdyk")) {
-		// Is currently checked (and being unchecked)
-		checkbox.classList.remove("css-17sgdyk")
-		checkbox.classList.add("css-1dfg2qw")
-		clientId = label.dataset.clientId.slice(12)
-		handleToggle(false, clientId)
-	} else if (checkbox.classList.contains("css-1dfg2qw")) {
-		// Is currently unchecked (and being checked)
-		checkbox.classList.remove("css-1dfg2qw")
-		checkbox.classList.add("css-17sgdyk")
-		clientId = label.dataset.clientId.slice(12)
-		handleToggle(true, clientId)
+		// Fallbacks in case Smartsheet renames the client id.
+		if (!isDashboardPage()) return null
+		for (const svg of document.querySelectorAll("svg")) {
+			if (svg.querySelectorAll("path").length < 20) continue
+			const grid = analyseGridSvg(svg)
+			if (grid) return grid
+		}
+		for (const candidate of document.querySelectorAll('[style*="background-size"]')) {
+			const grid = analyseLegacyCanvas(candidate)
+			if (grid) return grid
+		}
+		return null
 	}
-}
 
-function setPanelListeners() {
-	// Close Button
-	document
-		.querySelectorAll("[data-client-id='grid-helper-close']")[0]
-		.addEventListener("click", closeRightPanel)
+	function isDashboardPage() {
+		return location.pathname.startsWith("/dashboards/")
+	}
 
-	// Settings (More) Button
-	document
-		.querySelectorAll("[data-client-id='grid-helper-settings']")[0]
-		.addEventListener("click", openSettings)
+	// --- Rendering ---------------------------------------------------------
 
-	document
-		.querySelectorAll("[data-client-id^='grid-toggle']")
-		.forEach((toggle) => {
-			toggle.addEventListener("click", switchToggle)
+	function rectangleBox(grid, rectangle) {
+		const left = grid.cell.x * rectangle.x
+		const top = grid.cell.y * rectangle.y
+		return {
+			left,
+			top,
+			width:
+				rectangle.width === -1
+					? Math.max(grid.size.width - left, 0)
+					: grid.cell.x * rectangle.width,
+			height:
+				rectangle.height === -1
+					? Math.max(grid.size.height - top, 0)
+					: grid.cell.y * rectangle.height,
+		}
+	}
+
+	function buildSvgRectangle(grid, group, rectangle) {
+		const box = rectangleBox(grid, rectangle)
+		const rect = document.createElementNS(SVG_NS, "rect")
+		rect.setAttribute(OVERLAY_ATTR, group)
+		rect.setAttribute("x", box.left)
+		rect.setAttribute("y", box.top)
+		rect.setAttribute("width", box.width)
+		rect.setAttribute("height", box.height)
+		rect.setAttribute("fill", rectangle.color)
+		rect.style.opacity = rectangle.opacity
+		rect.style.pointerEvents = "none"
+		return rect
+	}
+
+	function buildHtmlRectangle(grid, group, rectangle) {
+		const box = rectangleBox(grid, rectangle)
+		const element = document.createElement("div")
+		element.setAttribute(OVERLAY_ATTR, group)
+		Object.assign(element.style, {
+			position: "absolute",
+			overflow: "hidden",
+			pointerEvents: "none",
+			left: box.left + "px",
+			top: box.top + "px",
+			width: box.width + "px",
+			height: box.height + "px",
+			backgroundColor: rectangle.color,
+			opacity: rectangle.opacity,
 		})
-}
-
-function createToggle(name, checked) {
-	className = "css-1dfg2qw" // Unchecked
-	if (checked) {
-		className = "css-17sgdyk" // Checked
-	}
-	return `
-    <div class="widget-title-accordion__title-form-group form-group">
-        <label data-client-id="grid-toggle-${name}" class="widget-title-accordion__show-title-toggle css-10lfpea">
-            <div class="css-vrslyn">
-                <div class="lodestar--focus-using-before ${className}">
-                        <span height="24px" width="24px" aria-hidden="true" role="presentation" color="#ffffff" class="css-ri6vi7">
-                            <svg viewBox="0 0 24 24">
-                                <g fill="none" fill-rule="evenodd">
-                                    <path d="M0 0h24v24H0z"></path>
-                                    <path fill="currentColor" fill-rule="nonzero" d="M18.216 5.24l.027.017c.753.5.981 1.51.517 2.288l-6.516 10.923a1.084 1.084 0 01-1.736.175l-5.06-5.565a1.725 1.725 0 01.05-2.372 1.548 1.548 0 012.083-.11l.143.132 3.244 3.568 5.094-8.538a1.545 1.545 0 011.988-.61l.166.092z"></path>
-                                </g>
-                            </svg>
-                        </span>
-                        <span height="24px" width="24px" aria-hidden="true" role="presentation" color="#ffffff" class="css-r6ux1k">
-                            <svg viewBox="0 0 24 24">
-                                <g fill="none" fill-rule="evenodd">
-                                    <path fill="currentColor" d="M17.657 6.343a1.6 1.6 0 010 2.263l-3.394 3.393 3.394 3.395a1.6 1.6 0 11-2.263 2.263L12 14.262l-3.393 3.395a1.6 1.6 0 11-2.263-2.263L9.737 12 6.343 8.606a1.6 1.6 0 112.263-2.263L12 9.736l3.394-3.393a1.6 1.6 0 012.263 0z"></path><path d="M0 0h24v24H0z"></path>
-                                </g>
-                            </svg>
-                        </span>
-                    <span class="css-xs35ns">
-                    </span>
-                </div>
-                <span class="css-1cqtals">${name}</span>
-            </div>
-        </label>
-    </div>
-    `.trim()
-}
-
-function openRightPanel() {
-	// Condense Canvas
-	element = document.querySelectorAll("[data-client-id='dab-dui-12']")[0]
-	element.classList.add("dashboard-canvas__viewport--condensed")
-
-	// Dashboard Right Panel
-	element = document.getElementsByClassName("dashboard-right-nav")[0]
-		.firstChild
-	element.classList.add("dashboard-right-panel__width-wrapper--open")
-	element.style.minWidth = "360px"
-	element.style.width = "360px"
-
-	// dab-drn-4
-	element = document.querySelectorAll("[data-client-id='dab-drn-4']")[0]
-	element.classList.add("dashboard-right-panel--open")
-
-	node = document.createElement("div")
-
-	enableToggle = createToggle("Enable Grid Helper", gridIsEnabled())
-
-	builtInToggles = ""
-	for (key in defaultGrids) {
-		builtInToggles += createToggle(key, selectedStyles.includes(key))
-	}
-	customToggles = ""
-	for (key in customGrids) {
-		customToggles += createToggle(key, selectedStyles.includes(key))
+		return element
 	}
 
-	node.innerHTML = `
-    <div class="dashboard-panel dashboard-right-panel__fade--enter-done" data-client-id="grid-helper-panel">
-        <div class="dashboard-panel__header">
-            <div class="dashboard-panel__title-row">
-                <span class="dashboard-panel__title">Grid Helper</span>
-                <div class="dashboard-panel__header-button-container">
-                    <div class="dropdown">
-                        <div role="button" class="dashboard-panel__button" data-client-id="grid-helper-settings">
-                            <button aria-disabled="false" class="dashboard-panel__button lodestar--focus-using-before css-1umvfwx" type="button">
-                                <div class="css-16jo8qw">
-                                    <span height="24px" width="24px" aria-hidden="true" role="presentation" class="css-1qwla2t">
-                                        <svg viewBox="0 0 24 24">
-                                            <g fill="none" fill-rule="evenodd">
-                                                <path d="M0 0h24v24H0z"></path><path fill="currentColor" d="M12 16a2 2 0 11.001 3.999A2 2 0 0112 16zm0-6a2 2 0 11.001 3.999A2 2 0 0112 10zm0-6a2 2 0 11.001 3.999A2 2 0 0112 4z"></path>
-                                            </g>
-                                        </svg>
-                                    </span>
-                                </div>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="dashboard-panel__divider"></div>
-                    <button data-client-id="grid-helper-close" aria-disabled="false" class="dashboard-panel__button lodestar--focus-using-before css-1umvfwx" type="button">
-                        <div class="css-14jo8qw">
-                            <span height="24px" width="24px" aria-hidden="true" role="presentation" class="css-1qwla2t">
-                                <svg viewBox="0 0 24 24">
-                                    <g fill="none" fill-rule="evenodd">
-                                        <path fill="currentColor" d="M17.657 6.343a1.6 1.6 0 010 2.263l-3.394 3.393 3.394 3.395a1.6 1.6 0 11-2.263 2.263L12 14.262l-3.393 3.395a1.6 1.6 0 11-2.263-2.263L9.737 12 6.343 8.606a1.6 1.6 0 112.263-2.263L12 9.736l3.394-3.393a1.6 1.6 0 012.263 0z"></path><path d="M0 0h24v24H0z"></path>
-                                    </g>
-                                </svg>
-                            </span>
-                        </div>
-                    </button>
-                </div>
-            </div>
-        </div>
-        <form class="widget-config">
-            <div class="card-body">
-                    ${enableToggle}
-            </div>
-            <div class="accordion">
-                <div class="card">
-                    <div class="card-header">Built-in Layouts</div>
-                    <div data-client-id="dab-wct-1" class="collapse show">
-                        <div class="card-body">
-                                ${builtInToggles}
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="accordion">
-                <div class="card">
-                    <div class="card-header">Custom Layouts</div>
-                    <div class="collapse show">
-                        <div class="card-body">
-                            ${customToggles}
-                            <span class="dashboard-panel-dashboard-settings__title">You can add new custom styles by clicking the More ( ⋮ ) icon at the top of the panel</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </form>
-    </div>`.trim()
-
-	element.prepend(node.firstChild)
-
-	setPanelListeners()
-}
-
-function closeRightPanel() {
-	gridPanel = document.querySelectorAll(
-		"[data-client-id='grid-helper-panel']"
-	)
-	if (gridPanel.length > 0) {
-		gridPanel[0].remove()
-		// dab-drn-4
-		element = document.querySelectorAll("[data-client-id='dab-drn-4']")[0]
-		element.classList.remove("dashboard-right-panel--open")
-
-		// Dashboard Right Panel
-		element = document.getElementsByClassName("dashboard-right-nav")[0]
-			.firstChild
-		element.classList.remove("dashboard-right-panel__width-wrapper--open")
-		element.style.minWidth = "0px"
-		element.style.width = "0px"
-
-		// Expand Canvas
-		element = document.querySelectorAll("[data-client-id='dab-dui-12']")[0]
-		element.classList.remove("dashboard-canvas__viewport--condensed")
+	function removeOverlay() {
+		document
+			.querySelectorAll(`[${OVERLAY_ATTR}='parent']`)
+			.forEach((node) => node.remove())
 	}
-}
 
-function railClicked(e) {
-	let isGridButton = gridButtonClicked(e)
+	function overlayPresent() {
+		return document.querySelector(`[${OVERLAY_ATTR}='parent']`) !== null
+	}
 
-	if (isGridButton) {
-		// Clicked Helper Grid Icon
-		// Check if panel is already open. If so, close it
-		rightPanel = document.querySelectorAll(
-			"[data-client-id='dab-drn-4']"
-		)[0].firstChild
-		if (rightPanel === null) {
-			// Panel is closed
-			openRightPanel()
-		} else if (rightPanel.dataset.clientId === "grid-helper-panel") {
-			closeRightPanel()
+	function layoutFor(name, grid) {
+		if (name in DEFAULT_GRIDS) return DEFAULT_GRIDS[name](grid.columns, grid.rows)
+		if (name in settings.customGrids) return settings.customGrids[name]
+		return null
+	}
+
+	function render() {
+		removeOverlay()
+
+		if (!settings.gridEnabled) return { enabled: false }
+
+		const grid = findGrid()
+		if (!grid) return { enabled: true, canvasFound: false }
+
+		let overlay
+		let build
+		if (grid.kind === "svg") {
+			overlay = document.createElementNS(SVG_NS, "g")
+			overlay.style.pointerEvents = "none"
+			build = buildSvgRectangle
 		} else {
-			closeSmartsheetPanel()
-			openRightPanel()
+			if (getComputedStyle(grid.host).position === "static") {
+				grid.host.style.position = "relative"
+			}
+			overlay = document.createElement("div")
+			Object.assign(overlay.style, {
+				position: "absolute",
+				inset: "0",
+				overflow: "hidden",
+				pointerEvents: "none",
+			})
+			build = buildHtmlRectangle
 		}
-	} else if (isGridButton !== null) {
-		// Clicked Another Right Rail Icon
-		closeRightPanel()
+		overlay.setAttribute(OVERLAY_ATTR, "parent")
+
+		for (const name of settings.gridStyles) {
+			const layout = layoutFor(name, grid)
+			if (!layout) continue
+			for (const rectangle of layout) {
+				overlay.appendChild(build(grid, name, rectangle))
+			}
+		}
+
+		// First child, so Smartsheet's own grid lines and widgets paint above it.
+		grid.host.prepend(overlay)
+		observeCanvas(grid.host)
+		return { enabled: true, canvasFound: true, columns: grid.columns, rows: grid.rows }
 	}
-}
 
-function addRailIcon(rightRail, railIcon) {
-	document
-		.querySelectorAll("[data-client-id='dab-drn-0']")[0]
-		.addEventListener("click", railClicked)
+	// --- Toolbar button --------------------------------------------------------
 
-	// Add New Icon
-	rightRail.prepend(railIcon)
-	// railIcon.addEventListener('click', toggleRightPanel);
-}
+	let toolbarButton = null
 
-function createRailIcon() {
-	const node = document.createElement("div")
-	node.innerHTML = `
-    <div id="grid-helper-icon" class="dashboard-right-rail__button-wrapper">
-        <div class="dashboard-right-rail__button-hover-wrapper">
-            <button aria-label="Grid Helper" data-client-id="grid-helper-button" aria-disabled="false" class="dashboard-right-rail__icon-button lodestar--focus-using-before css-u1gjss" type="button">
-                <div class="css-14jo8qw">
-                    <span height="24px" width="24px" aria-hidden="true" role="presentation" data-grid-helper-id="grid-helper-button" class="css-1qwla2t">
-                        <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="24" height="24" viewBox="0 0 24 24">
-                            <image x="1" y="1" width="22" height="22" xlink:href="data:img/png;base64,iVBORw0KGgoAAAANSUhEUgAAABYAAAAWCAYAAADEtGw7AAAAP0lEQVQ4je2SMQoAIAzEcv7/z+fmYie1g3BZC+GgkW0qJBnAtk7uo7Q+IOJ+sYA6i0v6FqfjiDfS8eK/50W8mMaOIx16iM1OAAAAAElFTkSuQmCC"/>
-                        </svg>
-                    </span>
-                </div>
-            </button>
-        </div>
-    </div>`.trim()
-
-	return node.firstChild
-}
-
-const railIcon = createRailIcon()
-
-var rightRailExists = setInterval(function () {
-	rightRail = document.querySelectorAll("[data-client-id='dab-drn-0']")
-	if (rightRail.length > 0) {
-		rightRail = rightRail[0]
-		clearInterval(rightRailExists)
-		addRailIcon(rightRail, railIcon)
+	function findWidgetSettingsButton() {
+		const known = document.querySelector(WIDGET_SETTINGS_SELECTOR)
+		if (known) return known
+		// Smartsheet keeps hidden copies of the toolbar for measuring; skip those.
+		for (const button of document.querySelectorAll('button[aria-label="Widget Settings"]')) {
+			if (!button.closest("[data-sds-toolbar2-h], [data-sds-toolbar2-h-i]")) return button
+		}
+		return null
 	}
-}, 100)
+
+	function gridIcon() {
+		const svg = document.createElementNS(SVG_NS, "svg")
+		svg.setAttribute("xmlns", SVG_NS)
+		svg.setAttribute("width", "20")
+		svg.setAttribute("height", "20")
+		svg.setAttribute("viewBox", "0 0 20 20")
+		svg.setAttribute("fill", "none")
+		svg.setAttribute("aria-hidden", "true")
+		const path = document.createElementNS(SVG_NS, "path")
+		path.setAttribute("stroke", "currentColor")
+		path.setAttribute("stroke-width", "1.4")
+		path.setAttribute("stroke-linecap", "round")
+		path.setAttribute(
+			"d",
+			"M7.3 3.5v13M12.7 3.5v13M3.5 7.3h13M3.5 12.7h13"
+		)
+		svg.appendChild(path)
+		return svg
+	}
+
+	// Clone Smartsheet's own button so ours matches the current build's styling,
+	// then swap in our icon, label and behaviour. The clone has no React
+	// fiber, so Smartsheet's handlers ignore it.
+	function buildToolbarButton(anchor) {
+		const button = anchor.cloneNode(true)
+		button.setAttribute("data-grid-helper", "button")
+		button.removeAttribute("data-client-id")
+		button.removeAttribute("data-focusable-item")
+		button.removeAttribute("id")
+		button.setAttribute("aria-label", "Grid Helper")
+		button.setAttribute("aria-pressed", "false")
+		button.setAttribute("aria-haspopup", "dialog")
+		button.setAttribute("aria-disabled", "false")
+		button.tabIndex = 0
+
+		const existingIcon = button.querySelector("svg")
+		if (existingIcon) existingIcon.replaceWith(gridIcon())
+		else button.prepend(gridIcon())
+
+		const label = button.querySelector(".sds-button-content")
+		if (label) label.textContent = "Grid Helper"
+
+		button.addEventListener("click", (event) => {
+			event.preventDefault()
+			event.stopPropagation()
+			togglePanel()
+		})
+		return button
+	}
+
+	function ensureToolbarButton() {
+		if (toolbarButton && toolbarButton.isConnected) return
+		toolbarButton = null
+		const anchor = findWidgetSettingsButton()
+		if (!anchor) {
+			if (panelOpen) closePanel()
+			return
+		}
+		toolbarButton = buildToolbarButton(anchor)
+		anchor.insertAdjacentElement("afterend", toolbarButton)
+		if (panelOpen) positionPanel()
+	}
+
+	// --- In-page panel -----------------------------------------------------
+
+	let panelHost = null
+	let panelControls = null
+	let panelOpen = false
+
+	function smartsheetTheme() {
+		const key = (document.body && document.body.dataset.smarThemeKey) || ""
+		return /dark/i.test(key) ? "theme-dark" : "theme-light"
+	}
+
+	function createPanel() {
+		panelHost = document.createElement("div")
+		panelHost.setAttribute("data-grid-helper", "panel")
+		panelHost.setAttribute("role", "dialog")
+		panelHost.setAttribute("aria-label", "Grid Helper")
+		Object.assign(panelHost.style, {
+			position: "fixed",
+			top: "0",
+			left: "0",
+			zIndex: "2147483646",
+			overflowY: "auto",
+			borderRadius: "8px",
+			boxShadow: "0 8px 24px rgba(0, 0, 0, 0.25)",
+		})
+
+		const shadow = panelHost.attachShadow({ mode: "open" })
+		const stylesheet = document.createElement("link")
+		stylesheet.rel = "stylesheet"
+		stylesheet.href = chrome.runtime.getURL("popup/popup.css")
+		const extra = document.createElement("style")
+		extra.textContent = ".ssgh-root { border: 1px solid var(--border); border-radius: 8px; }"
+
+		panelControls = globalThis.SSGH_createControls({
+			onEnabledChange: (enabled) => chrome.storage.sync.set({ gridEnabled: enabled }),
+			onStyleChange: (name, enabled) => {
+				const styles = settings.gridStyles.filter((style) => style !== name)
+				if (enabled) styles.push(name)
+				chrome.storage.sync.set({ gridStyles: styles })
+			},
+			onOpenOptions: () => chrome.runtime.sendMessage({ type: "openOptionsPage" }),
+			onClose: closePanel,
+		})
+		panelControls.element.classList.add(smartsheetTheme())
+		shadow.append(stylesheet, extra, panelControls.element)
+	}
+
+	function positionPanel() {
+		if (!panelHost || !toolbarButton) return
+		const rect = toolbarButton.getBoundingClientRect()
+		const margin = 8
+		const top = Math.round(rect.bottom + 6)
+		const left = Math.round(
+			Math.max(margin, Math.min(rect.left, window.innerWidth - PANEL_WIDTH - margin))
+		)
+		panelHost.style.top = top + "px"
+		panelHost.style.left = left + "px"
+		panelHost.style.maxHeight = Math.max(120, window.innerHeight - top - margin) + "px"
+	}
+
+	function updatePanelNotice(state) {
+		if (!panelControls) return
+		if (state && state.enabled && state.canvasFound === false) {
+			panelControls.setNotice(
+				"The grid shows in the dashboard's editing view. Open the editor (pencil icon) and it will appear."
+			)
+		} else {
+			panelControls.setNotice("")
+		}
+	}
+
+	function onDocumentPointerDown(event) {
+		const path = event.composedPath()
+		if (path.includes(panelHost) || path.includes(toolbarButton)) return
+		closePanel()
+	}
+
+	function onDocumentKeyDown(event) {
+		if (event.key === "Escape") {
+			closePanel()
+			if (toolbarButton) toolbarButton.focus()
+		}
+	}
+
+	function openPanel() {
+		if (!panelHost) createPanel()
+		panelControls.element.classList.remove("theme-light", "theme-dark")
+		panelControls.element.classList.add(smartsheetTheme())
+		panelControls.update(settings)
+		updatePanelNotice({ enabled: settings.gridEnabled, canvasFound: findGrid() !== null })
+		document.body.appendChild(panelHost)
+		panelOpen = true
+		positionPanel()
+		if (toolbarButton) toolbarButton.setAttribute("aria-pressed", "true")
+		document.addEventListener("pointerdown", onDocumentPointerDown, true)
+		document.addEventListener("keydown", onDocumentKeyDown, true)
+		window.addEventListener("resize", positionPanel)
+		window.addEventListener("scroll", positionPanel, true)
+	}
+
+	function closePanel() {
+		if (!panelOpen) return
+		panelOpen = false
+		if (panelHost) panelHost.remove()
+		if (toolbarButton) toolbarButton.setAttribute("aria-pressed", "false")
+		document.removeEventListener("pointerdown", onDocumentPointerDown, true)
+		document.removeEventListener("keydown", onDocumentKeyDown, true)
+		window.removeEventListener("resize", positionPanel)
+		window.removeEventListener("scroll", positionPanel, true)
+	}
+
+	function togglePanel() {
+		if (panelOpen) closePanel()
+		else openPanel()
+	}
+
+	// --- Keeping everything in sync ------------------------------------------
+
+	function observeCanvas(canvas) {
+		if (observedCanvas === canvas) return
+		if (resizeObserver) resizeObserver.disconnect()
+		observedCanvas = canvas
+		resizeObserver = new ResizeObserver(() => {
+			if (settings.gridEnabled) render()
+		})
+		resizeObserver.observe(canvas)
+	}
+
+	// Smartsheet swaps the editor and its toolbar in and out without a page
+	// load, so watch the DOM and re-add the button / overlay when they vanish.
+	// (A timer is used rather than requestAnimationFrame, which never fires
+	// while the tab is hidden.)
+	let scheduled = null
+	function sync() {
+		scheduled = null
+		ensureToolbarButton()
+		// Cheap check first; the full grid search only runs when the overlay
+		// is missing (editor just opened, or Smartsheet re-rendered).
+		if (settings.gridEnabled && !overlayPresent() && findGrid()) {
+			updatePanelNotice(render())
+		}
+	}
+	const domObserver = new MutationObserver(() => {
+		if (scheduled !== null) return
+		scheduled = setTimeout(sync, 50)
+	})
+	domObserver.observe(document.documentElement, { childList: true, subtree: true })
+
+	function loadSettings() {
+		return chrome.storage.sync.get(STORAGE_DEFAULTS).then((items) => {
+			settings = items
+			return settings
+		})
+	}
+
+	function applySettings() {
+		const state = render()
+		if (panelOpen) {
+			panelControls.update(settings)
+			updatePanelNotice(state)
+		}
+		return state
+	}
+
+	chrome.storage.onChanged.addListener((changes, area) => {
+		if (area !== "sync") return
+		let changed = false
+		for (const key of Object.keys(STORAGE_DEFAULTS)) {
+			if (key in changes) {
+				settings[key] = changes[key].newValue ?? STORAGE_DEFAULTS[key]
+				changed = true
+			}
+		}
+		if (changed) applySettings()
+	})
+
+	chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+		if (!message || typeof message.type !== "string") return false
+
+		switch (message.type) {
+			case "getState":
+				sendResponse({
+					onDashboard: isDashboardPage(),
+					canvasFound: findGrid() !== null,
+					enabled: settings.gridEnabled,
+				})
+				return false
+			case "refresh":
+				loadSettings().then(() => {
+					sendResponse({
+						onDashboard: isDashboardPage(),
+						...applySettings(),
+					})
+				})
+				return true // async response
+			default:
+				return false
+		}
+	})
+
+	loadSettings().then(() => {
+		ensureToolbarButton()
+		render()
+	})
+})()
