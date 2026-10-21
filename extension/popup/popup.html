@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<title>Smartsheet Dashboard Overlay</title>
+		<link rel="stylesheet" href="popup.css" />
+	</head>
+	<body>
+		<header class="header">
+			<h1>Grid Helper</h1>
+			<button id="settings" class="icon-button" type="button" title="Options" aria-label="Open options">
+				<svg viewBox="0 0 24 24" aria-hidden="true">
+					<path fill="currentColor" d="M12 16a2 2 0 11.001 3.999A2 2 0 0112 16zm0-6a2 2 0 11.001 3.999A2 2 0 0112 10zm0-6a2 2 0 11.001 3.999A2 2 0 0112 4z" />
+				</svg>
+			</button>
+		</header>
+
+		<p id="notice" class="notice" hidden></p>
+
+		<main id="controls" hidden>
+			<section class="section">
+				<label class="toggle">
+					<input type="checkbox" id="enable-grid" />
+					<span class="switch" aria-hidden="true"></span>
+					<span class="label">Enable Grid Helper</span>
+				</label>
+			</section>
+
+			<section class="section">
+				<h2>Built-in Layouts</h2>
+				<div id="built-in-layouts" class="toggle-list"></div>
+			</section>
+
+			<section class="section">
+				<h2>Custom Layouts</h2>
+				<div id="custom-layouts" class="toggle-list"></div>
+				<p class="hint">
+					Add or edit custom layouts in the
+					<a href="#" id="open-options">options page</a>.
+				</p>
+			</section>
+		</main>
+
+		<script src="../shared/grids.js"></script>
+		<script src="popup.js"></script>
+	</body>
+</html>

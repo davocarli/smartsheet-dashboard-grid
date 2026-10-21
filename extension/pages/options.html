@@ -1,54 +1,67 @@
-<!DOCTYPE HTML>
-<html>
-    <head>
-        <title>Smartshet Grid Overlay Options</title>
-    </head>
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<title>Smartsheet Dashboard Overlay Options</title>
+		<link rel="stylesheet" href="options.css" />
+	</head>
 
-    <body>
-        <h3>Smartsheet Grid Helper Settings</h3>
-        <p>On this page you can add new grid styles to be available when using the Grid Helper.
-        <br>Additionally, the grid style selected/saved on this page will be available as a "compatibility mode" style.
-        <br>The style selected can be added to the dashboard by clicking the extension icon in your toolbar and may 
-        <br>continue to work if Smartsheet is updated in such a way that the in-app right rail icon disappears.
-        </p>
-        <h3>Select Grid Style</h3>
-        <h4>Built-in</h4>
-        <input type="checkbox" id="Center Line" name="gridStyle" value="Center Line">
-        <label for="Center Line">Center Line</label><br>
+	<body>
+		<h1>Smartsheet Dashboard Overlay</h1>
+		<p>
+			Choose which grid layouts are drawn on the dashboard editor and manage your own custom layouts.
+			You can also switch layouts on and off from the extension's toolbar popup while viewing a dashboard.
+		</p>
 
-        <input type="checkbox" id="11 Columns" name="gridStyle" value="11 Columns">
-        <label for="11 Columns">11 Columns</label><br>
+		<h2>Grid Layouts</h2>
+		<h3>Built-in</h3>
+		<div id="built-in-list" class="checkbox-list"></div>
 
-        <input type="checkbox" id="4 Columns" name="gridStyle" value="4 Columns">
-        <label for="4 Columns">4 Columns (Quarters)</label><br>
+		<h3>Custom</h3>
+		<div id="custom-list" class="checkbox-list"></div>
 
-        <h4 id="custom-heading">Custom</h4>
+		<div class="actions">
+			<button id="save" type="button">Save selection</button>
+			<button id="add" type="button">Add custom layout</button>
+			<span id="status" class="status" role="status"></span>
+		</div>
 
-        <div style="margin-top: 20px; display: none;" id="addGrid">
-            <h5>Grid Name</h5>
-            <input type="text" id="custom-grid-name" name="custom-grid-name">
-            <h5>Grid Layout</h5>
-            <textarea id="custom-grid-layout" name="custom-grid-layout" rows="20" cols="100"></textarea>
-            <p>Design your new grid layout by listing out json objects specify color, opacity, and location.
-            <br>For example: "{color: 'Red', opacity: '20%', height: 10, width: 6, x: 3, y:7}"
-            <br>This object would create a Red rectangle of 20% opacity that covers a 10x6 grid squares where the top left corner is the 4th square from the left 8 squares down.
-            <br>
-            <br><b>Additional Notes</b>
-            <br>- The top left grid square is at x=0, y=0, rather than x=1, y=1.
-            <br>- Setting a height of -1 will cause the shape to extend downwards infinitely.
-            <br>- Setting a width of -1 will cause the shape to extend to the right infinitely.
-            <br>- The different objects should be comma-separated.
-            <br>
-            <br><b>Full Example</b>
-            <br>{"color": "Red", "opacity": "20%", "height": -1, "width": 6, "x": 3, "y":0},
-            <br>{"color": "Green", "opacity": "30%", "height": 30, "width": 10, "x": 10, "y": 15},
-            <br>{"color": "Blue", "opacity": "50%", "height": 20, "width": -1, "x": 0, "y": 10}
-            </p>
-            <button id="newGrid">Save Custom Grid</button>
-        </div>
-        <div style="margin-top: 20px;" id="status"></div>
-        <button id="save">Save</button>
-        <button id="add">Add Custom Grid</button>
-        <script src="options.js"></script>
-    </body>
+		<section id="add-grid" class="editor" hidden>
+			<h2>Custom Layout</h2>
+			<label for="custom-grid-name">Layout name</label>
+			<input type="text" id="custom-grid-name" name="custom-grid-name" />
+
+			<label for="custom-grid-layout">Layout</label>
+			<textarea id="custom-grid-layout" name="custom-grid-layout" rows="14" spellcheck="false"></textarea>
+
+			<p>
+				Describe the layout as a comma-separated list of JSON objects, each giving a rectangle's
+				<code>color</code>, <code>opacity</code>, <code>height</code>, <code>width</code>, <code>x</code> and <code>y</code>
+				in dashboard grid squares. For example:
+			</p>
+			<pre>{"color": "Red", "opacity": "20%", "height": 10, "width": 6, "x": 3, "y": 7}</pre>
+			<p>
+				This draws a red rectangle at 20% opacity covering 10 squares down by 6 across, with its top-left corner
+				on the 4th square from the left and the 8th square from the top.
+			</p>
+			<ul>
+				<li>The top-left grid square is <code>x = 0, y = 0</code>, not <code>1, 1</code>.</li>
+				<li>A <code>height</code> of <code>-1</code> extends the shape downwards indefinitely.</li>
+				<li>A <code>width</code> of <code>-1</code> extends the shape to the right indefinitely.</li>
+			</ul>
+			<p><strong>Full example</strong></p>
+			<pre>{"color": "Red", "opacity": "20%", "height": -1, "width": 6, "x": 3, "y": 0},
+{"color": "Green", "opacity": "30%", "height": 30, "width": 10, "x": 10, "y": 15},
+{"color": "Blue", "opacity": "50%", "height": 20, "width": -1, "x": 0, "y": 10}</pre>
+
+			<div class="actions">
+				<button id="new-grid" type="button">Save custom layout</button>
+				<button id="cancel-grid" type="button" class="secondary">Cancel</button>
+				<span id="editor-status" class="status error" role="alert"></span>
+			</div>
+		</section>
+
+		<script src="../shared/grids.js"></script>
+		<script src="options.js"></script>
+	</body>
 </html>
