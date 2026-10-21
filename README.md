@@ -8,6 +8,8 @@ This Chrome extension overlays shapes and guide-lines on Smartsheet's dashboard 
 2. Click the extension icon in the browser toolbar. A popup opens with an **Enable Grid Helper** switch and a switch for each built-in and custom layout.
 3. Turn on the layouts you want. They are drawn immediately and the selection is remembered, so the grid comes back the next time you edit a dashboard.
 
+The built-in layouts (Center Line, 11 Columns, 4 Columns) adapt to the width of the dashboard canvas, so they stay centred whatever size Smartsheet gives it. Custom layouts use absolute grid coordinates.
+
 Custom layouts are created on the options page: click the **⋮** button in the popup, or right-click the extension icon and choose **Options**.
 
 ## Installing from source
@@ -17,5 +19,7 @@ Custom layouts are created on the options page: click the **⋮** button in the 
 ## Changelog
 ### 2.0.0
 - Smartsheet removed the dashboard side panel the extension used to inject its controls into, so the controls now live in a popup opened by clicking the extension icon.
+- Works with the redesigned editor, which draws its grid as an SVG rather than a background image.
+- Built-in layouts scale to the dashboard's column count instead of assuming a fixed width.
 - The overlay follows the dashboard: it is redrawn when you enter the editor, navigate between dashboards or resize the window.
 - Options page refreshed with validation for custom layouts and a dark theme.

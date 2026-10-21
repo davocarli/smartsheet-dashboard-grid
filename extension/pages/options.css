@@ -62,6 +62,12 @@ h3 {
 	flex: 1;
 }
 
+.hint {
+	margin: 0 0 8px;
+	color: var(--muted);
+	font-size: 13px;
+}
+
 .checkbox-list .empty {
 	color: var(--muted);
 }
